@@ -1,0 +1,9 @@
+[package]
+authors = ["Remi Lafage <remi.lafage@onera.fr>"]
+build = "build.rs"
+name = "cobyla"
+version = "0.1.0"
+
+[build-dependencies]
+bindgen = "0.56.0"
+cmake = "0.1"
