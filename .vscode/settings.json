@@ -1,0 +1,5 @@
+{
+  "cmake.sourceDirectory": "${workspaceFolder}/cobyla",
+  "cmake.configureOnOpen": false,
+  "cmake.generator": "NMake Makefiles"
+}

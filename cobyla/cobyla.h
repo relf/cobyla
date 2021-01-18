@@ -18,6 +18,10 @@
  *
  * Copyright (c) 1992, Mike Powell (FORTRAN version).
  * Copyright (c) 2015, Éric Thiébaut (C version).
+ *
+ * Rémi Lafage (2021): copied from https://github.com/emmt/Algorithms/tree/master/cobyla 
+ * cobyla() was renamed raw_cobyla() to avoid name clash with NlOpt implementation
+ *
  */
 
 #ifndef _COBYLA_H
@@ -105,8 +109,10 @@ cobyla_calcfc(INTEGER n, INTEGER m, const REAL x[], REAL con[], void* data);
  * Note that we are trying to adjust X so that F(X) is as small as possible
  * subject to the constraint functions being nonnegative.
  */
+
+
 extern int
-cobyla(INTEGER n, INTEGER m,
+raw_cobyla(INTEGER n, INTEGER m,
        cobyla_calcfc* calcfc, void* calcfc_data,
        REAL x[], REAL rhobeg, REAL rhoend,
        INTEGER iprint, INTEGER* maxfun,

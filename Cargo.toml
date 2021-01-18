@@ -3,6 +3,7 @@ authors = ["Remi Lafage <remi.lafage@onera.fr>"]
 build = "build.rs"
 name = "cobyla"
 version = "0.1.0"
+edition = "2018"
 
 [build-dependencies]
 bindgen = "0.56.0"

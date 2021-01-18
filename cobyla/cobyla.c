@@ -116,7 +116,7 @@ print_calcfc(FILE* output, INTEGER n, INTEGER nfvals,
 
 
 int
-cobyla(INTEGER n, INTEGER m, cobyla_calcfc* calcfc, void* calcfc_data,
+raw_cobyla(INTEGER n, INTEGER m, cobyla_calcfc* calcfc, void* calcfc_data,
        REAL x[], REAL rhobeg, REAL rhoend, INTEGER iprint,
        INTEGER* maxfun, REAL w[], INTEGER iact[])
 {
