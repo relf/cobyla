@@ -3,7 +3,6 @@
 #![allow(non_snake_case)]
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-use std::mem;
 use std::os::raw::c_void;
 use std::slice;
 
@@ -46,6 +45,7 @@ extern "C" fn function_raw_callback<F: ObjFn<T>, G: CstrFn, T>(
     }
 
     // Important: we don't want f to get dropped at this point
+    #[allow(clippy::forget_ref)]
     std::mem::forget(f);
     res
 }
@@ -160,8 +160,7 @@ mod tests {
     ) -> f64 {
         let r1 = *x.offset(0) + 1.0;
         let r2 = *x.offset(1);
-        let fc = 10.0 * (r1 * r1) + (r2 * r2);
-        fc
+        10.0 * (r1 * r1) + (r2 * r2)
     }
 
     #[test]
