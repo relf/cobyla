@@ -4,11 +4,12 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
-	let dst = cmake::Config::new("./cobyla")
-		.very_verbose(true)
-		.generator("NMake Makefiles")
-		.build_target("cobyla")
-		.build();
+	let mut config = cmake::Config::new("./cobyla");
+	if env::var("CARGO_CFG_TARGET_ENV").unwrap() == "msvc" {
+		config.very_verbose(true).generator("NMake Makefiles");
+	}
+	config.build_target("cobyla");
+	let dst = config.build();
 
 	println!("cargo:rustc-link-search=native={}/build", dst.display());
 	println!("cargo:rustc-link-lib=static=cobyla");
