@@ -30,6 +30,7 @@ fn main() {
 		// Tell cargo to invalidate the built crate whenever any of the
 		// included header files changed.
 		.parse_callbacks(Box::new(bindgen::CargoCallbacks))
+		.whitelist_function("raw_cobyla")
 		// Finish the builder and generate the bindings.
 		.generate()
 		// Unwrap the Result and panic on failure.

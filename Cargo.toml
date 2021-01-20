@@ -10,6 +10,7 @@ repository = "https://github.com/relf/cobyla/"
 build = "build.rs"
 keywords = ["optimizer", "optimization", "constrained", "derivative-free"]
 categories = ["algorithms", "api-bindings", "science"]
+documentation = "https://docs.rs/cobyla"
 
 [build-dependencies]
 bindgen = "0.56.0"
