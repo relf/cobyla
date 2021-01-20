@@ -121,8 +121,8 @@ pub fn fmin_cobyla<'a, F: ObjFn<U>, G: CstrFn, U>(
     maxfun: i32,
     iprint: i32,
 ) -> (i32, &'a [f64]) {
-    let n = x0.len();
-    let m = cons.len();
+    let n: i32 = x0.len() as i32;
+    let m: i32 = cons.len() as i32;
 
     // Our strategy is to pass the actual objective function as part of the
     // parameters to the callback. For this we pack it inside a FunctionCfg struct.
@@ -137,20 +137,19 @@ pub fn fmin_cobyla<'a, F: ObjFn<U>, G: CstrFn, U>(
     let fn_cfg_ptr = Box::into_raw(fn_cfg) as *mut c_void;
 
     let x = x0;
-    let mut maxfun = maxfun;
-    let mut w: Vec<f64> = vec![0.; n * (3 * n + 2 * m + 11) + 4 * m + 6];
-    let mut iact: Vec<i32> = vec![0; m + 1];
-
+    let mut maxfun = maxfun.into();
+    let mut w = vec![0.; (n * (3 * n + 2 * m + 11) + 4 * m + 6) as usize];
+    let mut iact = vec![0; (m + 1) as usize];
     let status = unsafe {
         raw_cobyla(
-            n as i32,
-            m as i32,
+            n.into(),
+            m.into(),
             Some(function_raw_callback::<F, G, U>),
             fn_cfg_ptr,
             x.as_mut_ptr(),
             rhobeg,
             rhoend,
-            iprint,
+            iprint.into(),
             &mut maxfun,
             w.as_mut_ptr(),
             iact.as_mut_ptr(),
@@ -207,8 +206,8 @@ mod tests {
         let rhoend = 1e-4;
         let iprint = 0;
         let mut maxfun = 2000;
-        let mut w: Vec<f64> = vec![0.; 3000];
-        let mut iact: Vec<i32> = vec![0; 51];
+        let mut w: Vec<_> = vec![0.; 3000];
+        let mut iact: Vec<_> = vec![0; 51];
         let &null = &0;
 
         // xopt = [-1., 0.]
@@ -272,8 +271,8 @@ mod tests {
         let rhoend = 1e-4;
         let iprint = 0;
         let mut maxfun = 2000;
-        let mut w: Vec<f64> = vec![0.; 3000];
-        let mut iact: Vec<i32> = vec![0; 51];
+        let mut w: Vec<_> = vec![0.; 3000];
+        let mut iact: Vec<_> = vec![0; 51];
         let &null = &0;
 
         // xopt = [-1., 0.]
