@@ -208,15 +208,14 @@ mod tests {
         let mut maxfun = 2000;
         let mut w: Vec<_> = vec![0.; 3000];
         let mut iact: Vec<_> = vec![0; 51];
-        let &null = &0;
-
+        let null = std::ptr::null_mut::<c_void>();
         // xopt = [-1., 0.]
         unsafe {
             raw_cobyla(
                 n,
                 m,
                 Some(calcfc),
-                null as *mut _,
+                null,
                 x.as_mut_ptr(),
                 rhobeg,
                 rhoend,
@@ -273,7 +272,7 @@ mod tests {
         let mut maxfun = 2000;
         let mut w: Vec<_> = vec![0.; 3000];
         let mut iact: Vec<_> = vec![0; 51];
-        let &null = &0;
+        let null = std::ptr::null_mut::<c_void>();
 
         // xopt = [-1., 0.]
         unsafe {
@@ -281,7 +280,7 @@ mod tests {
                 n,
                 m,
                 Some(calcfc_cstr),
-                null as *mut _,
+                null,
                 x.as_mut_ptr(),
                 rhobeg,
                 rhoend,
