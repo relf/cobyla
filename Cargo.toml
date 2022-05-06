@@ -13,5 +13,5 @@ categories = ["algorithms", "api-bindings", "science"]
 documentation = "https://docs.rs/cobyla"
 
 [build-dependencies]
-bindgen = "0.56.0"
+bindgen = "0.59"
 cmake = "0.1"
