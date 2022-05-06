@@ -155,6 +155,9 @@ pub fn fmin_cobyla<'a, F: ObjFn<U>, G: CstrFn, U>(
             iact.as_mut_ptr(),
         )
     };
+    // Convert the raw pointer back into a Box with the Box::from_raw function,
+    // allowing the Box destructor to perform the cleanup.
+    unsafe { Box::from_raw(fn_cfg_ptr) };
     (status, x)
 }
 
