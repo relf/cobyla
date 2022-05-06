@@ -26,31 +26,26 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 use std::os::raw::c_void;
 use std::slice;
 
-/// A trait to represent an objective function to be minimized
-pub trait ObjFn<U>: Fn(&[f64], &mut U) -> f64 {
-    //! A trait representing an objective function.
-    //!
-    //! An objective function takes the form of a closure `f(x: &[f64], user_data: &mut U) -> f64`
-    //!
-    //! * `x` - n-dimensional array
-    //! * `user_data` - user defined data
-}
+/// A trait for an objective function to be minimized
+///
+/// An objective function takes the form of a closure `f(x: &[f64], user_data: &mut U) -> f64`
+///
+/// * `x` - n-dimensional array
+/// * `user_data` - user defined data
+pub trait ObjFn<U>: Fn(&[f64], &mut U) -> f64 {}
 impl<F, U> ObjFn<U> for F where F: Fn(&[f64], &mut U) -> f64 {}
 
-/// A trait to represent constraint function
-/// which should be positive eventually  
-pub trait CstrFn: Fn(&[f64]) -> f64 {
-    //! A trait representing aa constraint function.
-    //!
-    //! An constraint function takes the form of a closure `f(x: &[f64]) -> f64`
-    //! The algorithm make the constraint positive eventually.
-    //!
-    //! For instance if you want an upper bound MAX for x,
-    //! you have to define the constraint as `|x| MAX - x`.
-    //! Conversly for a lower bound you would define `|x| x - MIN`
-    //!
-    //! * `x` - n-dimensional array
-}
+/// A trait for a constraint function which should be positive eventually
+///
+/// A constraint function takes the form of a closure `f(x: &[f64]) -> f64`
+/// The algorithm makes the constraint positive eventually.
+///
+/// For instance if you want an upper bound MAX for x,
+/// you have to define the constraint as `|x| MAX - x`.
+/// Conversly for a lower bound you would define `|x| x - MIN`
+///
+/// * `x` - n-dimensional array
+pub trait CstrFn: Fn(&[f64]) -> f64 {}
 impl<F> CstrFn for F where F: Fn(&[f64]) -> f64 {}
 
 /// Packs a function with a user defined parameter set of type `U`
@@ -128,7 +123,6 @@ pub fn fmin_cobyla<'a, F: ObjFn<U>, G: CstrFn, U>(
     // parameters to the callback. For this we pack it inside a FunctionCfg struct.
     // We allocation our FunctionCfg on the heap and pass a pointer to the C lib
     // (This is pretty unsafe but works).
-    // `into_raw` will leak the boxed object
     let fn_cfg = Box::new(FunctionCfg {
         func,
         cons,
