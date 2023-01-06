@@ -1,6 +1,6 @@
 # cobyla
 
-[![tests](https://github.com/relf/cobyla/workflows/tests/badge.svg)](https://github.com/relf/cobila/actions?query=workflow%3Atests)
+[![tests](https://github.com/relf/cobyla/workflows/tests/badge.svg)](https://github.com/relf/cobyla/actions?query=workflow%3Atests)
 [![crates.io](https://img.shields.io/crates/v/cobyla)](https://crates.io/crates/cobyla)
 [![docs](https://docs.rs/cobyla/badge.svg)](https://docs.rs/cobyla)
 
