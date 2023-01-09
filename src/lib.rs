@@ -95,7 +95,7 @@ fn function_raw_callback<F: ObjFn<U>, G: CstrFn, U>(
 /// let mut x = vec![1., 1.];
 ///
 /// // Constraints definition to be positive eventually
-/// let mut cons: Vec<&CstrFn> = vec![];
+/// let mut cons: Vec<&dyn CstrFn> = vec![];
 /// cons.push(&|x: &[f64]| x[1] - x[0] * x[0]);
 /// cons.push(&|x: &[f64]| 1. - x[0] * x[0] - x[1] * x[1]);
 ///
@@ -129,19 +129,19 @@ pub fn fmin_cobyla<'a, F: ObjFn<U>, G: CstrFn, U>(
     let fn_cfg_ptr = Box::into_raw(fn_cfg) as *mut c_void;
 
     let x = x0;
-    let mut maxfun = maxfun.into();
+    let mut maxfun = maxfun;
     let mut w = vec![0.; (n * (3 * n + 2 * m + 11) + 4 * m + 6) as usize];
     let mut iact = vec![0; (m + 1) as usize];
     let status = unsafe {
         raw_cobyla(
-            n.into(),
-            m.into(),
+            n,
+            m,
             Some(function_raw_callback::<F, G, U>),
             fn_cfg_ptr,
             x.as_mut_ptr(),
             rhobeg,
             rhoend,
-            iprint.into(),
+            iprint,
             &mut maxfun,
             w.as_mut_ptr(),
             iact.as_mut_ptr(),
@@ -155,10 +155,12 @@ pub fn fmin_cobyla<'a, F: ObjFn<U>, G: CstrFn, U>(
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_abs_diff_eq;
+
     use super::*;
 
     /////////////////////////////////////////////////////////////////////////
-    // First problem
+    // First problem (see cobyla.c case 1)
 
     fn paraboloid(x: &[f64], _data: &mut ()) -> f64 {
         10. * (x[0] + 1.).powf(2.) + x[1].powf(2.)
@@ -173,9 +175,12 @@ mod tests {
         let cstr1 = |x: &[f64]| x[0];
         cons.push(&cstr1);
 
+        // x_opt = [0, 0]
         let (status, x_opt) = fmin_cobyla(paraboloid, &mut x, &cons, (), 0.5, 1e-4, 200, 1);
         println!("status = {}", status);
         println!("x = {:?}", x_opt);
+
+        assert_abs_diff_eq!(x.as_slice(), [0., 0.].as_slice(), epsilon = 1e-4);
     }
 
     /// Direct usage Pb 1
@@ -204,6 +209,7 @@ mod tests {
         let mut w: Vec<_> = vec![0.; 3000];
         let mut iact: Vec<_> = vec![0; 51];
         let null = std::ptr::null_mut::<c_void>();
+
         // xopt = [-1., 0.]
         unsafe {
             raw_cobyla(
@@ -220,10 +226,15 @@ mod tests {
                 iact.as_mut_ptr(),
             );
         }
+        assert_abs_diff_eq!(x.as_slice(), [-1., 0.].as_slice(), epsilon = 1e-3);
     }
 
     /////////////////////////////////////////////////////////////////////////
-    // Second problem
+    // Second problem (see cobyla.c case 6)
+
+    fn fletcher9115(x: &[f64], _data: &mut ()) -> f64 {
+        -x[0] - x[1]
+    }
 
     #[allow(clippy::vec_init_then_push)]
     #[test]
@@ -234,12 +245,15 @@ mod tests {
         cons.push(&|x: &[f64]| x[1] - x[0] * x[0]);
         cons.push(&|x: &[f64]| 1. - x[0] * x[0] - x[1] * x[1]);
 
-        let (status, x_opt) = fmin_cobyla(paraboloid, &mut x, &cons, (), 0.5, 1e-4, 200, 1);
+        let (status, x_opt) = fmin_cobyla(fletcher9115, &mut x, &cons, (), 0.5, 1e-4, 200, 1);
         println!("status = {}", status);
         println!("x = {:?}", x_opt);
+
+        let sqrt_0_5: f64 = 0.5_f64.sqrt();
+        assert_abs_diff_eq!(x_opt, [sqrt_0_5, sqrt_0_5].as_slice(), epsilon = 1e-4);
     }
 
-    /// Direct usage Pb 2
+    /// Direct usage Pb 6
     ///
     unsafe fn calcfc_cstr(
         _n: ::std::os::raw::c_long,
@@ -269,7 +283,7 @@ mod tests {
         let mut iact: Vec<_> = vec![0; 51];
         let null = std::ptr::null_mut::<c_void>();
 
-        // xopt = [-1., 0.]
+        // xopt = [sqrt(0.5), sqrt(0.5)]
         unsafe {
             raw_cobyla(
                 n,
@@ -285,5 +299,12 @@ mod tests {
                 iact.as_mut_ptr(),
             );
         }
+
+        let sqrt_0_5: f64 = 0.5_f64.sqrt();
+        assert_abs_diff_eq!(
+            x.as_slice(),
+            [sqrt_0_5, sqrt_0_5].as_slice(),
+            epsilon = 1e-4
+        );
     }
 }
