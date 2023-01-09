@@ -1,7 +1,5 @@
 //! cobyla
 //!
-//! This a Rust wrapper for COBYLA optimizer (COBYLA stands for Constrained Optimization BY Linear Approximations).
-//!
 //! COBYLA is an algorithm for minimizing a function of many variables. The method is derivatives free (only the function values are needed)
 //! and take into account constraints on the variables. The algorithm is described in:
 //!
@@ -14,7 +12,12 @@
 //!
 //! The algorithm is run using the [`fmin_cobyla`] function.
 //!
-//! Implementation Note: the binding is generated with bindgen is visible as the `raw_cobyla` function using the callback type
+//! Implementation Notes:
+//!
+//! 0.2.x : The C code is now translated in Rust using c2rust transpiler then manually edited to avoid FFI usage
+//! to get Rust (unsafe) implementation.
+//!  
+//! 0.1.x : the C code is wrapped with with bindgen is visible as the `raw_cobyla` function using the callback type
 //! `cobyla_calcfc` which is used to compute the objective function and the constraints.
 //!
 
