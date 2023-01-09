@@ -13,3 +13,6 @@ documentation = "https://docs.rs/cobyla"
 
 [dependencies]
 libc = "0.2"
+
+[dev-dependencies]
+approx="0.5"
