@@ -7,19 +7,19 @@ env:
 
 jobs:
   testing:
-    name: testing
-    runs-on: ubuntu-latest
+    name: testing-${{ matrix.toolchain }}-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         toolchain:
           - stable
+        os: 
+          - ubuntu-latest
+          - windows-latest
 
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
-
-      - name: Install ubuntu packages
-        run: sudo apt-get install libssl-dev gfortran libopenblas-dev liblapack-dev liblapacke-dev libatlas-base-dev
 
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
