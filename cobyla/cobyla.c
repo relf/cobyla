@@ -18,6 +18,9 @@
  *
  * Copyright (c) 1992, Mike Powell (FORTRAN version).
  * Copyright (c) 2015, Éric Thiébaut (C version).
+ *
+ * Rémi Lafage (2021): copied from https://github.com/emmt/Algorithms/tree/master/cobyla 
+ * cobyla() was renamed raw_cobyla() to avoid name clash with NlOpt implementation
  */
 
 /* To re-use as much as the code for the reverse communication routines, we use
