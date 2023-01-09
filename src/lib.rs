@@ -120,8 +120,8 @@ pub fn fmin_cobyla<'a, F: ObjFn<U>, G: CstrFn, U>(
 
     // Our strategy is to pass the actual objective function as part of the
     // parameters to the callback. For this we pack it inside a FunctionCfg struct.
-    // We allocation our FunctionCfg on the heap and pass a pointer to the C lib
-    // (This is pretty unsafe but works).
+    // We allocate our FunctionCfg on the heap and pass a pointer to the C lib
+    // (This is pretty unsafe but it works).
     let fn_cfg = Box::new(FunctionCfg {
         func,
         cons,
