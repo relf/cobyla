@@ -18,10 +18,8 @@
 //! `cobyla_calcfc` which is used to compute the objective function and the constraints.
 //!
 
-#![allow(non_upper_case_globals)]
-#![allow(non_camel_case_types)]
-#![allow(non_snake_case)]
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+mod cobyla;
+use crate::cobyla::raw_cobyla;
 
 use std::os::raw::c_void;
 use std::slice;
@@ -57,7 +55,7 @@ struct FunctionCfg<'a, F: ObjFn<U>, G: CstrFn, U> {
 }
 
 /// Callback interface for Cobyla C code to evaluate objective and constraint functions
-extern "C" fn function_raw_callback<F: ObjFn<U>, G: CstrFn, U>(
+fn function_raw_callback<F: ObjFn<U>, G: CstrFn, U>(
     n: ::std::os::raw::c_long,
     m: ::std::os::raw::c_long,
     x: *const f64,
@@ -182,7 +180,7 @@ mod tests {
 
     /// Direct usage Pb 1
     ///
-    unsafe extern "C" fn calcfc(
+    unsafe fn calcfc(
         _n: ::std::os::raw::c_long,
         _m: ::std::os::raw::c_long,
         x: *const f64,
@@ -227,12 +225,12 @@ mod tests {
     /////////////////////////////////////////////////////////////////////////
     // Second problem
 
+    #[allow(clippy::vec_init_then_push)]
     #[test]
     fn test_fmin_cobyla2() {
         let mut x = vec![1., 1.];
 
-        #[allow(bare_trait_objects)]
-        let mut cons: Vec<&CstrFn> = vec![];
+        let mut cons: Vec<&dyn CstrFn> = vec![];
         cons.push(&|x: &[f64]| x[1] - x[0] * x[0]);
         cons.push(&|x: &[f64]| 1. - x[0] * x[0] - x[1] * x[1]);
 
@@ -243,7 +241,7 @@ mod tests {
 
     /// Direct usage Pb 2
     ///
-    unsafe extern "C" fn calcfc_cstr(
+    unsafe fn calcfc_cstr(
         _n: ::std::os::raw::c_long,
         _m: ::std::os::raw::c_long,
         x: *const f64,
