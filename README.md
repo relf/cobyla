@@ -11,6 +11,15 @@ and take into account constraints on the variables. The algorithm is described i
   > Advances in Optimization and Numerical Analysis Mathematics and Its Applications, vol. 275 (eds. Susana Gomez and Jean-Pierre Hennart), 
   > Kluwer Academic Publishers, pp. 51-67 (1994).
 
+
+## cobyla 0.3.x
+
+COBYLA is now also implemented as an argmin::Solver to benefit from [argmin framework](https://github.com/argmin-rs) tooling. See [example](./examples/paraboloid.rs)
+
+```bash
+cargo run --example paraboloid
+```
+
 ## cobyla 0.2.x
 
 COBYLA C code has been translated to Rust using [c2rust](https://github.com/immunant/c2rust) then manually edited.
