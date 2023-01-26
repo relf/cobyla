@@ -32,6 +32,7 @@ where
     /// Returns an updated `state` and optionally a `KV` which holds key-value pairs used in
     /// [Observers](`crate::core::observers::Observe`).
     /// The default implementation returns the unaltered `state` and no `KV`.
+    #[allow(clippy::useless_conversion)]
     fn init(
         &mut self,
         problem: &mut Problem<O>,
@@ -45,7 +46,16 @@ where
         let iprint = state.iprint();
         let maxfun = state.maxfun();
         let mut initial_state = state;
-        let ptr = unsafe { cobyla_create(n, m, rhobeg, rhoend, iprint, maxfun) };
+        let ptr = unsafe {
+            cobyla_create(
+                n.into(),
+                m.into(),
+                rhobeg,
+                rhoend,
+                iprint.into(),
+                maxfun.into(),
+            )
+        };
         initial_state.cobyla_context = Some(ManuallyDrop::new(ptr));
 
         let initial_state = initial_state.param(self.x0.clone()).cost(fx0);
