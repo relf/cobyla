@@ -17,6 +17,19 @@
     clippy::unnecessary_cast
 )]
 
+use std::{convert::TryFrom, rc::Rc};
+
+#[repr(C)]
+pub enum CobylaStatus {
+    COBYLA_INITIAL_ITERATE = 2,
+    COBYLA_ITERATE = 1,
+    COBYLA_SUCCESS = 0,
+    COBYLA_ROUNDING_ERRORS = -1,
+    COBYLA_TOO_MANY_EVALUATIONS = -2,
+    COBYLA_BAD_ADDRESS = -3,
+    COBYLA_CORRUPTED = -4,
+}
+
 //  {
 //     // pub type _IO_wide_data;
 //     // pub type _IO_codecvt;
@@ -76,7 +89,7 @@ pub type cobyla_calcfc = unsafe fn(
     *mut libc::c_double,
     *mut libc::c_void,
 ) -> libc::c_double;
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct _cobyla_context {
     pub n: libc::c_long,
@@ -245,7 +258,10 @@ pub unsafe fn cobyla_create(
             .wrapping_mul(::std::mem::size_of::<libc::c_double>() as libc::c_ulong),
     ) as libc::c_long;
     // ctx = malloc(size as libc::c_ulong) as *mut cobyla_context_t;
-    ctx = Box::into_raw(Box::default());
+    let mut vec: Vec<libc::c_int> = vec![0; usize::try_from(size).unwrap()];
+    ctx = vec.as_mut_ptr() as *mut cobyla_context_t;
+    std::mem::forget(vec);
+
     if ctx.is_null() {
         return 0 as *mut cobyla_context_t;
     }
@@ -292,8 +308,7 @@ pub unsafe fn cobyla_create(
 #[no_mangle]
 pub unsafe fn cobyla_delete(mut ctx: *mut cobyla_context_t) {
     if !ctx.is_null() {
-        //free(ctx as *mut libc::c_void);
-        drop(Box::from_raw(ctx));
+        drop(Rc::from_raw(ctx));
     }
 }
 #[no_mangle]
@@ -3444,21 +3459,22 @@ unsafe fn trstlp(
 pub unsafe fn cobyla_reason(mut status: libc::c_int) -> *const libc::c_char {
     match status {
         1 => {
-            return b"user requested to compute F(X) and C(X)" as *const u8 as *const libc::c_char;
-        }
-        0 => return b"algorithm was successful" as *const u8 as *const libc::c_char,
-        -1 => {
-            return b"rounding errors are becoming damaging" as *const u8 as *const libc::c_char;
-        }
-        -2 => {
-            return b"MAXFUN limit has been reached" as *const u8 as *const libc::c_char;
-        }
-        -3 => return b"illegal NULL address" as *const u8 as *const libc::c_char,
-        -4 => {
-            return b"unexpected parameter or corrupted workspace" as *const u8
+            return b"user requested to compute F(X) and C(X)\0" as *const u8
                 as *const libc::c_char;
         }
-        _ => return b"unknown status" as *const u8 as *const libc::c_char,
+        0 => return b"algorithm was successful\0" as *const u8 as *const libc::c_char,
+        -1 => {
+            return b"rounding errors are becoming damaging\0" as *const u8 as *const libc::c_char;
+        }
+        -2 => {
+            return b"MAXFUN limit has been reached\0" as *const u8 as *const libc::c_char;
+        }
+        -3 => return b"illegal NULL address\0" as *const u8 as *const libc::c_char,
+        -4 => {
+            return b"unexpected parameter or corrupted workspace\0" as *const u8
+                as *const libc::c_char;
+        }
+        _ => return b"unknown status\0" as *const u8 as *const libc::c_char,
     };
 }
 unsafe fn print_calcfc(

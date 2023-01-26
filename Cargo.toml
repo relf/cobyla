@@ -13,6 +13,9 @@ documentation = "https://docs.rs/cobyla"
 
 [dependencies]
 libc = "0.2"
+argmin = { git = "https://github.com/argmin-rs/argmin" }
+serde = "1"
+instant = "0.1"
 
 [dev-dependencies]
 approx="0.5"

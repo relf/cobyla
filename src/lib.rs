@@ -24,6 +24,11 @@
 mod cobyla;
 use crate::cobyla::raw_cobyla;
 
+mod cobyla_solver;
+mod cobyla_state;
+pub use crate::cobyla_solver::*;
+pub use crate::cobyla_state::*;
+
 use std::os::raw::c_void;
 use std::slice;
 
