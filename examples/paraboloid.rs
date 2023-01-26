@@ -8,8 +8,8 @@ fn paraboloid(x: &[f64], _data: &mut ()) -> f64 {
 }
 
 /// Implementation of CostFunction
-struct TestFunc;
-impl CostFunction for TestFunc {
+struct ParaboloidCost;
+impl CostFunction for ParaboloidCost {
     type Param = Vec<f64>;
     type Output = Vec<f64>;
 
@@ -21,7 +21,7 @@ impl CostFunction for TestFunc {
 }
 
 fn main() {
-    // Using plain API
+    println!("*** Solve paraboloid problem using fmin_cobyla");
     let mut x = vec![1., 1.];
 
     #[allow(bare_trait_objects)]
@@ -31,10 +31,11 @@ fn main() {
 
     let (status, x_opt) = fmin_cobyla(paraboloid, &mut x, &cons, (), 0.5, 1e-4, 200, 1);
     println!("status = {}", status);
-    println!("x = {:?}", x_opt);
+    println!("x = {:?}\n\n", x_opt);
+    std::thread::sleep(std::time::Duration::from_secs(1));
 
-    // Using argmin framework
-    let cost = TestFunc;
+    println!("*** Solve paraboloid problem using Cobyla argmin solver");
+    let cost = ParaboloidCost;
     let solver = CobylaSolver::new(vec![1., 1.]);
 
     let res = Executor::new(cost, solver)
