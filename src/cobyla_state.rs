@@ -106,9 +106,9 @@ where
     /// # Example
     ///
     /// ```
-    /// # use egobox_ego    ::CobylaState;
+    /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat};
-    /// # let state: CobylaState<f64> = CobylaState::new();
+    /// # let state: CobylaState = CobylaState::new();
     /// # assert_eq!(state.target_cost.to_ne_bytes(), f64::NEG_INFINITY.to_ne_bytes());
     /// let state = state.target_cost(0.0);
     /// # assert_eq!(state.target_cost.to_ne_bytes(), 0.0f64.to_ne_bytes());
@@ -124,9 +124,9 @@ where
     /// # Example
     ///
     /// ```
-    /// # use egobox_ego::CobylaState;
+    /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat};
-    /// # let state: CobylaState<f64> = CobylaState::new();
+    /// # let state: CobylaState = CobylaState::new();
     /// # assert_eq!(state.max_iters, std::u64::MAX);
     /// let state = state.max_iters(1000);
     /// # assert_eq!(state.max_iters, 1000);
@@ -144,8 +144,8 @@ where
     ///
     /// ```
     /// # use argmin::core::State;
-    /// # use egobox_ego::CobylaState;
-    /// # let state: CobylaState<f64> = CobylaState::new();
+    /// # use cobyla::CobylaState;
+    /// # let state: CobylaState = CobylaState::new();
     /// # let cost_old = 1.0f64;
     /// # let state = state.cost(vec![cost_old]);
     /// # assert!(state.prev_cost.is_none());
@@ -167,11 +167,10 @@ where
     /// # Example
     ///
     /// ```
-    /// # use ndarray::array;
-    /// # use egobox_ego::CobylaState;
+    /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat};
-    /// # let mut state: CobylaState<f64> = CobylaState::new();
-    /// # state.cost = Some(array![12.0, 0.1]);
+    /// # let mut state: CobylaState = CobylaState::new();
+    /// # state.cost = Some(vec![12.0, 0.1]);
     /// let cost = state.get_full_cost();
     /// # assert_eq!(cost.unwrap()[0].to_ne_bytes(), 12.0f64.to_ne_bytes());
     /// # assert_eq!(cost.unwrap()[1].to_ne_bytes(), 0.1f64.to_ne_bytes());
@@ -185,11 +184,10 @@ where
     /// # Example
     ///
     /// ```
-    /// # use ndarray::array;
-    /// # use egobox_ego::CobylaState;
+    /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat};
-    /// # let mut state: CobylaState<f64> = CobylaState::new();
-    /// # state.best_cost = Some(array![12.0, 0.1]);
+    /// # let mut state: CobylaState = CobylaState::new();
+    /// # state.best_cost = Some(vec![12.0, 0.1]);
     /// let cost = state.get_full_best_cost();
     /// # assert_eq!(cost.unwrap()[0].to_ne_bytes(), 12.0f64.to_ne_bytes());
     /// # assert_eq!(cost.unwrap()[1].to_ne_bytes(), 0.1f64.to_ne_bytes());
@@ -226,9 +224,9 @@ impl State for CobylaState {
     /// # extern crate instant;
     /// # use instant;
     /// # use std::collections::HashMap;
-    /// # use argmin::core::{State, TerminationReason};
-    /// use egobox_ego::CobylaState;
-    /// let state: CobylaState<f64> = CobylaState::new();
+    /// # use argmin::core::{State, TerminationStatus};
+    /// use cobyla::CobylaState;
+    /// let state: CobylaState = CobylaState::new();
     ///
     /// # assert!(state.param.is_none());
     /// # assert!(state.prev_param.is_none());
@@ -244,7 +242,7 @@ impl State for CobylaState {
     /// # assert_eq!(state.max_iters, std::u64::MAX);
     /// # assert_eq!(state.counts, HashMap::new());
     /// # assert_eq!(state.time.unwrap(), instant::Duration::new(0, 0));
-    /// # assert_eq!(state.termination_reason, TerminationReason::NotTerminated);
+    /// # assert_eq!(state.termination_status, TerminationStatus::NotTerminated);
     /// ```
     fn new() -> Self {
         CobylaState {
@@ -282,15 +280,13 @@ impl State for CobylaState {
     ///
     /// ```
     /// # use argmin::core::{State, ArgminFloat};
-    /// # use ndarray::array;
-    /// # use egobox_ego::CobylaState;
+    /// # use cobyla::CobylaState;
     ///
-    /// let mut state: CobylaState<f64> = CobylaState::new();
+    /// let mut state: CobylaState = CobylaState::new();
     ///
-    /// // Simulating a new, better parameter vector
-    /// let mut state = state.data((array![[1.0f64], [2.0f64]], array![[10.0],[5.0]]));
-    /// state.param = Some(array![2.0f64]);
-    /// state.cost = Some(array![5.0]);
+    /// // Simulating a new parameter vector
+    /// state.param = Some(vec![2.0f64]);
+    /// state.cost = Some(vec![5.0]);
     ///
     /// // Calling update
     /// state.update();
@@ -317,12 +313,11 @@ impl State for CobylaState {
     /// # Example
     ///
     /// ```
-    /// # use ndarray::array;
-    /// # use egobox_ego::CobylaState;
+    /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat};
-    /// # let mut state: CobylaState<f64> = CobylaState::new();
+    /// # let mut state: CobylaState = CobylaState::new();
     /// # assert!(state.param.is_none());
-    /// # state.param = Some(array![1.0, 2.0]);
+    /// # state.param = Some(vec![1.0, 2.0]);
     /// # assert_eq!(state.param.as_ref().unwrap()[0].to_ne_bytes(), 1.0f64.to_ne_bytes());
     /// # assert_eq!(state.param.as_ref().unwrap()[1].to_ne_bytes(), 2.0f64.to_ne_bytes());
     /// let param = state.get_param();  // Option<&P>
@@ -338,14 +333,13 @@ impl State for CobylaState {
     /// # Example
     ///
     /// ```
-    /// # use ndarray::array;
-    /// # use egobox_ego::CobylaState;
+    /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat};
     ///
-    /// # let mut state: CobylaState<f64> = CobylaState::new();
+    /// # let mut state: CobylaState = CobylaState::new();
 
     /// # assert!(state.best_param.is_none());
-    /// # state.best_param = Some(array![1.0, 2.0]);
+    /// # state.best_param = Some(vec![1.0, 2.0]);
     /// # assert_eq!(state.best_param.as_ref().unwrap()[0].to_ne_bytes(), 1.0f64.to_ne_bytes());
     /// # assert_eq!(state.best_param.as_ref().unwrap()[1].to_ne_bytes(), 2.0f64.to_ne_bytes());
     /// let best_param = state.get_best_param();  // Option<&P>
@@ -361,12 +355,12 @@ impl State for CobylaState {
     /// # Example
     ///
     /// ```
-    /// # use egobox_ego::CobylaState;
-    /// # use argmin::core::{State, ArgminFloat, TerminationReason};
-    /// # let mut state: CobylaState<f64> = CobylaState::new();
-    /// # assert_eq!(state.termination_reason, TerminationReason::NotTerminated);
-    /// let state = state.terminate_with(TerminationReason::MaxItersReached);
-    /// # assert_eq!(state.termination_reason, TerminationReason::MaxItersReached);
+    /// # use cobyla::CobylaState;
+    /// # use argmin::core::{State, ArgminFloat, TerminationReason, TerminationStatus};
+    /// # let mut state: CobylaState = CobylaState::new();
+    /// # assert_eq!(state.termination_status, TerminationStatus::NotTerminated);
+    /// let state = state.terminate_with(TerminationReason::SolverConverged);
+    /// # assert_eq!(state.termination_status, TerminationStatus::Terminated(TerminationReason::SolverConverged));
     /// ```
     fn terminate_with(mut self, reason: TerminationReason) -> Self {
         self.termination_status = TerminationStatus::Terminated(reason);
@@ -380,9 +374,9 @@ impl State for CobylaState {
     /// ```
     /// # extern crate instant;
     /// # use instant;
-    /// # use egobox_ego::CobylaState;
+    /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat, TerminationReason};
-    /// # let mut state: CobylaState<f64> = CobylaState::new();
+    /// # let mut state: CobylaState = CobylaState::new();
     /// let state = state.time(Some(instant::Duration::new(0, 12)));
     /// # assert_eq!(state.time.unwrap(), instant::Duration::new(0, 12));
     /// ```
@@ -396,11 +390,10 @@ impl State for CobylaState {
     /// # Example
     ///
     /// ```
-    /// # use ndarray::array;
-    /// # use egobox_ego::CobylaState;
+    /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat};
-    /// # let mut state: CobylaState<f64> = CobylaState::new();
-    /// # state.cost = Some(array![12.0]);
+    /// # let mut state: CobylaState = CobylaState::new();
+    /// # state.cost = Some(vec![12.0]);
     /// let cost = state.get_cost();
     /// # assert_eq!(cost.to_ne_bytes(), 12.0f64.to_ne_bytes());
     /// ```
@@ -416,11 +409,10 @@ impl State for CobylaState {
     /// # Example
     ///
     /// ```
-    /// # use ndarray::array;
-    /// # use egobox_ego::CobylaState;
+    /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat};
-    /// # let mut state: CobylaState<f64> = CobylaState::new();
-    /// # state.best_cost = Some(array![12.0]);
+    /// # let mut state: CobylaState = CobylaState::new();
+    /// # state.best_cost = Some(vec![12.0]);
     /// let best_cost = state.get_best_cost();
     /// # assert_eq!(best_cost.to_ne_bytes(), 12.0f64.to_ne_bytes());
     /// ```
@@ -436,10 +428,9 @@ impl State for CobylaState {
     /// # Example
     ///
     /// ```
-    /// # use ndarray::array;
-    /// # use egobox_ego::CobylaState;
+    /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat};
-    /// # let mut state: CobylaState<f64> = CobylaState::new();
+    /// # let mut state: CobylaState = CobylaState::new();
     /// # state.target_cost = 12.0;
     /// let target_cost = state.get_target_cost();
     /// # assert_eq!(target_cost.to_ne_bytes(), 12.0f64.to_ne_bytes());
@@ -453,9 +444,9 @@ impl State for CobylaState {
     /// # Example
     ///
     /// ```
-    /// # use egobox_ego::CobylaState;
+    /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat};
-    /// # let mut state: CobylaState<f64> = CobylaState::new();
+    /// # let mut state: CobylaState = CobylaState::new();
     /// # state.iter = 12;
     /// let iter = state.get_iter();
     /// # assert_eq!(iter, 12);
@@ -469,9 +460,9 @@ impl State for CobylaState {
     /// # Example
     ///
     /// ```
-    /// # use egobox_ego::CobylaState;
+    /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat};
-    /// # let mut state: CobylaState<f64> = CobylaState::new();
+    /// # let mut state: CobylaState = CobylaState::new();
     /// # state.last_best_iter = 12;
     /// let last_best_iter = state.get_last_best_iter();
     /// # assert_eq!(last_best_iter, 12);
@@ -485,9 +476,9 @@ impl State for CobylaState {
     /// # Example
     ///
     /// ```
-    /// # use egobox_ego::CobylaState;
+    /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat};
-    /// # let mut state: CobylaState<f64> = CobylaState::new();
+    /// # let mut state: CobylaState = CobylaState::new();
     /// # state.max_iters = 12;
     /// let max_iters = state.get_max_iters();
     /// # assert_eq!(max_iters, 12);
@@ -534,9 +525,9 @@ impl State for CobylaState {
     /// ```
     /// # extern crate instant;
     /// # use instant;
-    /// # use egobox_ego::CobylaState;
+    /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat};
-    /// # let mut state: CobylaState<f64> = CobylaState::new();
+    /// # let mut state: CobylaState = CobylaState::new();
     /// let time = state.get_time();
     /// # assert_eq!(time.unwrap(), instant::Duration::new(0, 0));
     /// ```
@@ -549,9 +540,9 @@ impl State for CobylaState {
     /// # Example
     ///
     /// ```
-    /// # use egobox_ego::CobylaState;
+    /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat};
-    /// # let mut state: CobylaState<f64> = CobylaState::new();
+    /// # let mut state: CobylaState = CobylaState::new();
     /// # assert_eq!(state.iter, 0);
     /// state.increment_iter();
     /// # assert_eq!(state.iter, 1);
@@ -564,9 +555,9 @@ impl State for CobylaState {
     ///
     /// ```
     /// # use std::collections::HashMap;
-    /// # use egobox_ego::CobylaState;
+    /// # use cobyla::CobylaState;
     /// # use argmin::core::{Problem, State, ArgminFloat};
-    /// # let mut state: CobylaState<f64> = CobylaState::new();
+    /// # let mut state: CobylaState = CobylaState::new();
     /// # assert_eq!(state.counts, HashMap::new());
     /// # state.counts.insert("test2".to_string(), 10u64);
     /// #
@@ -595,9 +586,9 @@ impl State for CobylaState {
     ///
     /// ```
     /// # use std::collections::HashMap;
-    /// # use egobox_ego::CobylaState;
+    /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat};
-    /// # let mut state: CobylaState<f64> = CobylaState::new();
+    /// # let mut state: CobylaState = CobylaState::new();
     /// # assert_eq!(state.counts, HashMap::new());
     /// # state.counts.insert("test2".to_string(), 10u64);
     /// let counts = state.get_func_counts();
@@ -615,9 +606,9 @@ impl State for CobylaState {
     /// # Example
     ///
     /// ```
-    /// # use egobox_ego::CobylaState;
+    /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat};
-    /// # let mut state: CobylaState<f64> = CobylaState::new();
+    /// # let mut state: CobylaState = CobylaState::new();
     /// # state.last_best_iter = 12;
     /// # state.iter = 12;
     /// let is_best = state.is_best();
