@@ -13,7 +13,7 @@ documentation = "https://docs.rs/cobyla"
 
 [dependencies]
 libc = "0.2"
-argmin = { git = "https://github.com/argmin-rs/argmin" }
+argmin = "0.8.0"
 serde = "1"
 instant = "0.1"
 
