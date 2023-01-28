@@ -8,8 +8,42 @@ use std::mem::ManuallyDrop;
 use argmin::core::{CostFunction, Problem, Solver, State, TerminationStatus, KV};
 use serde::{Deserialize, Serialize};
 
+/// [Argmin Solver](https://www.argmin-rs.org/book/index.html) which implements COBYLA method.
+///
+/// ```
+/// use argmin::core::{CostFunction, Error, Executor};
+/// use argmin::core::observers::{ObserverMode, SlogLogger};
+/// use cobyla::CobylaSolver;
+///
+/// struct ParaboloidCost;
+/// impl CostFunction for ParaboloidCost {
+///     type Param = Vec<f64>;
+///     type Output = Vec<f64>;
+///
+///     // Minimize 10*(x0+1)^2 + x1^2 subject to x0 >= 0
+///     fn cost(&self, x: &Self::Param) -> Result<Self::Output, Error> {
+///         /// Return Ok( vec![cost, constraint] ) where constraint >= 0
+///         Ok(vec![10. * (x[0] + 1.).powf(2.) + x[1].powf(2.), x[0]])
+///     }
+/// }
+///
+/// let cost = ParaboloidCost;
+/// let solver = CobylaSolver::new(vec![1., 1.]);
+///
+/// let res = Executor::new(cost, solver)
+///             .configure(|state| state.max_iters(100))
+///             .add_observer(SlogLogger::term(), ObserverMode::Always)
+///             .run()
+///             .unwrap();
+///
+/// // Wait a second (lets the logger flush everything before printing again)
+/// std::thread::sleep(std::time::Duration::from_secs(1));
+///
+/// println!("Result of COBYLA:\n{}", res);
+/// ```
 #[derive(Clone, Serialize, Deserialize)]
 pub struct CobylaSolver {
+    /// Initial guess for x value
     x0: Vec<f64>,
 }
 
@@ -30,7 +64,7 @@ where
     /// Executed before any iterations are performed and has access to the optimization problem
     /// definition and the internal state of the solver.
     /// Returns an updated `state` and optionally a `KV` which holds key-value pairs used in
-    /// [Observers](`crate::core::observers::Observe`).
+    /// [Observers](`argmin::core::observers::Observe`).
     /// The default implementation returns the unaltered `state` and no `KV`.
     #[allow(clippy::useless_conversion)]
     fn init(
@@ -65,7 +99,7 @@ where
     /// Computes a single iteration of the algorithm and has access to the optimization problem
     /// definition and the internal state of the solver.
     /// Returns an updated `state` and optionally a `KV` which holds key-value pairs used in
-    /// [Observers](`crate::core::observers::Observe`).
+    /// [Observers](`argmin::core::observers::Observe`).
     fn next_iter(
         &mut self,
         problem: &mut Problem<O>,

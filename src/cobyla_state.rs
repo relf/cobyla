@@ -19,9 +19,11 @@ use std::mem::ManuallyDrop;
 /// * current iteration number
 /// * iteration number where the last best parameter vector was found
 /// * maximum number of iterations that will be executed
-/// * problem function evaluation counts ()
+/// * problem function evaluation counts
 /// * elapsed time
-/// * termination reason (set to [`TerminationReason::NotTerminated`] if not terminated yet)
+/// * termination status
+/// * COBYLA specific parameters: rhobeg, rhoend, iprint, maxfun
+///
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct CobylaState {
     /// Current parameter vector
@@ -57,10 +59,13 @@ pub struct CobylaState {
     /// Status of optimization execution
     pub termination_status: TerminationStatus,
 
-    /// COBYLA parameters
+    /// Rho start value
     pub rhobeg: f64,
+    /// Rho end value
     pub rhoend: f64,
+    /// Control of traces
     pub iprint: i32,
+    /// Cost function calls budget
     pub maxfun: i32,
 
     #[serde(skip)]
@@ -196,15 +201,22 @@ where
         self.best_cost.as_ref()
     }
 
+    /// Returns the rho start value
     pub fn rhobeg(&self) -> f64 {
         self.rhobeg
     }
+
+    /// Returns the rho end value
     pub fn rhoend(&self) -> f64 {
         self.rhoend
     }
+
+    /// Returns the level of printing
     pub fn iprint(&self) -> i32 {
         self.iprint
     }
+
+    /// Returns cost function calls budget
     pub fn maxfun(&self) -> i32 {
         self.maxfun
     }
@@ -350,7 +362,7 @@ impl State for CobylaState {
         self.best_param.as_ref()
     }
 
-    /// Sets the termination reason (default: [`TerminationReason::NotTerminated`])
+    /// Sets the termination reason
     ///
     /// # Example
     ///
