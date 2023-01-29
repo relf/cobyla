@@ -9,7 +9,7 @@
 //!
 //! The objective function to be minimized has to implement the [`ObjFn`] trait, while constraints,
 //! also defined as functions of the input variables have to implement the [`CstrFn`] trait.
-//! A constraint value are intended to be positive at the end of the optimization.
+//! Constraints values are intended to be positive at the end of the optimization.
 //!
 //! The algorithm can be run either using the [`fmin_cobyla`] function or using the [`CobylaSolver`]
 //! which leverages the [argmin](https://www.argmin-rs.org/book/index.html) framework.
