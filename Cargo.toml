@@ -7,7 +7,7 @@ license-file = "LICENSE.md"
 description = "COBYLA optimizer for Rust"
 readme = "README.md"
 repository = "https://github.com/relf/cobyla/"
-keywords = ["optimizer", "optimization", "constrained-optimization", "derivative-free"]
+keywords = ["optimizer", "optimization", "constrained", "derivative-free"]
 categories = ["algorithms", "api-bindings", "science"]
 documentation = "https://docs.rs/cobyla"
 
