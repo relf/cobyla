@@ -1,13 +1,13 @@
 [package]
 authors = ["Remi Lafage <remi.lafage@onera.fr>"]
 name = "cobyla"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2018"
 license-file = "LICENSE.md"
 description = "COBYLA optimizer for Rust"
 readme = "README.md"
 repository = "https://github.com/relf/cobyla/"
-keywords = ["optimizer", "optimization", "constrained", "derivative-free"]
+keywords = ["optimizer", "optimization", "constrained-optimization", "derivative-free"]
 categories = ["algorithms", "api-bindings", "science"]
 documentation = "https://docs.rs/cobyla"
 

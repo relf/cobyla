@@ -9,10 +9,14 @@
 //!
 //! The objective function to be minimized has to implement the [`ObjFn`] trait, while constraints,
 //! also defined as functions of the input variables have to implement the [`CstrFn`] trait.
+//! A constraint value are intended to be positive at the end of the optimization.
 //!
-//! The algorithm is run using the [`fmin_cobyla`] function.
+//! The algorithm can be run either using the [`fmin_cobyla`] function or using the [`CobylaSolver`]
+//! which leverages the [argmin](https://www.argmin-rs.org/book/index.html) framework.
 //!
 //! Implementation Notes:
+//!
+//! 0.3.x : COBYLA is now also implemented as an argmin::Solver and benefits from [argmin framework](https://github.com/argmin-rs) tooling.
 //!
 //! 0.2.x : The C code is now translated in Rust using c2rust transpiler then manually edited to avoid FFI usage
 //! to get Rust (unsafe) implementation.
@@ -20,7 +24,6 @@
 //! 0.1.x : the C code is wrapped with with bindgen is visible as the `raw_cobyla` function using the callback type
 //! `cobyla_calcfc` which is used to compute the objective function and the constraints.
 //!
-
 mod cobyla;
 use crate::cobyla::raw_cobyla;
 
@@ -111,6 +114,54 @@ fn function_raw_callback<F: ObjFn<U>, G: CstrFn, U>(
 /// println!("status = {}", status);
 /// println!("x = {:?}", x_opt);
 /// ```
+///
+/// # Algorithm description:
+///
+/// COBYLA minimizes an objective function F(X) subject to M inequality
+/// constraints on X, where X is a vector of variables that has N components.
+///
+/// The algorithm employs linear approximations to the objective and constraint
+/// functions, the approximations being formed by linear interpolation at N+1
+/// points in the space of the variables. We regard these interpolation points
+/// as vertices of a simplex.
+///
+/// The parameter RHO controls the size of the simplex and it is reduced
+/// automatically from RHOBEG to RHOEND. For each RHO the subroutine tries
+/// to achieve a good vector of variables for the current size, and then RHO
+/// is reduced until the value RHOEND is reached.
+///
+/// Therefore RHOBEG and RHOEND should be set to reasonable initial changes to and the
+/// required accuracy in the variables respectively, but this accuracy should be
+/// viewed as a subject for experimentation because it is not guaranteed.
+///  
+/// The subroutine has an advantage over many of its competitors, however, which is
+/// that it treats each constraint individually when calculating a change to the
+/// variables, instead of lumping the constraints together into a single penalty
+/// function.  
+///
+/// The name of the algorithm is derived from the phrase Constrained
+/// Optimization BY Linear Approximations.
+///
+/// The user can set the values of RHOBEG and RHOEND, and must provide an
+/// initial vector of variables in X. Further, the value of IPRINT should be
+/// set to 0, 1, 2 or 3, which controls the amount of printing during the
+/// calculation. Specifically, there is no output if IPRINT=0 and there is
+/// output only at the end of the calculation if IPRINT=1.  
+/// Otherwise each new value of RHO and SIGMA is printed.  
+///
+/// Further, the vector of variables and some function information are
+/// given either when RHO is reduced or when each
+/// new value of F(X) is computed in the cases IPRINT=2 or IPRINT=3
+/// respectively.  Here SIGMA is a penalty parameter, it being assumed that a
+/// change to X is an improvement if it reduces the merit function:
+///
+/// F(X)+SIGMA*MAX(0.0,-C1(X),-C2(X),...,-CM(X)),
+///
+/// where C1, C2, ..., CM denote the constraint functions that should become
+/// nonnegative eventually, at least to the precision of RHOEND.  In the
+/// printed output the displayed term that is multiplied by SIGMA is
+/// called MAXCV, which stands for 'MAXimum Constraint Violation'.
+///
 #[allow(clippy::useless_conversion)]
 #[allow(clippy::too_many_arguments)]
 pub fn fmin_cobyla<'a, F: ObjFn<U>, G: CstrFn, U>(
