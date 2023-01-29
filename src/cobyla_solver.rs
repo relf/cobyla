@@ -15,22 +15,21 @@ use serde::{Deserialize, Serialize};
 /// use argmin::core::observers::{ObserverMode, SlogLogger};
 /// use cobyla::CobylaSolver;
 ///
-/// struct ParaboloidCost;
-/// impl CostFunction for ParaboloidCost {
+/// struct ParaboloidProblem;
+/// impl CostFunction for ParaboloidProblem {
 ///     type Param = Vec<f64>;
 ///     type Output = Vec<f64>;
 ///
 ///     // Minimize 10*(x0+1)^2 + x1^2 subject to x0 >= 0
 ///     fn cost(&self, x: &Self::Param) -> Result<Self::Output, Error> {
-///         /// Return Ok( vec![cost, constraint] ) where constraint >= 0
 ///         Ok(vec![10. * (x[0] + 1.).powf(2.) + x[1].powf(2.), x[0]])
 ///     }
 /// }
 ///
-/// let cost = ParaboloidCost;
+/// let pb = ParaboloidProblem;
 /// let solver = CobylaSolver::new(vec![1., 1.]);
 ///
-/// let res = Executor::new(cost, solver)
+/// let res = Executor::new(pb, solver)
 ///             .configure(|state| state.max_iters(100))
 ///             .add_observer(SlogLogger::term(), ObserverMode::Always)
 ///             .run()
