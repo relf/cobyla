@@ -1,7 +1,7 @@
 [package]
 authors = ["Remi Lafage <remi.lafage@onera.fr>"]
 name = "cobyla"
-version = "0.3.2"
+version = "0.3.3"
 edition = "2018"
 license-file = "LICENSE.md"
 description = "COBYLA optimizer for Rust"
@@ -18,4 +18,4 @@ serde = "1"
 instant = "0.1"
 
 [dev-dependencies]
-approx="0.5"
+approx = "0.5"

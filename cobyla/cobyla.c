@@ -475,7 +475,7 @@ cobylb(const INTEGER n, const INTEGER m,
      instructions are also used for calling CALCFC during the iterations
      of the algorithm. */
  call_calcfc:
-  if (nfvals >= maxfun && nfvals > 0 && iprint > 0) {
+  if (nfvals >= maxfun && nfvals > 0) {
     status = COBYLA_TOO_MANY_EVALUATIONS;
     fprintf(stderr, "Return from subroutine COBYLA because %s.\n",
             cobyla_reason(status));

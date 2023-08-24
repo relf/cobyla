@@ -518,15 +518,14 @@ pub unsafe fn cobyla_iterate(
     'c_12387: loop {
         match current_block {
             14453151562619017203 => {
-                if nfvals >= maxfun
-                    && nfvals > 0 as libc::c_int as libc::c_long
-                    && iprint > 0 as libc::c_int as libc::c_long
-                {
+                if nfvals >= maxfun && nfvals > 0 as libc::c_int as libc::c_long {
                     status = -(2 as libc::c_int);
-                    println!(
-                        "Return from subroutine COBYLA because {:?}.\n",
-                        cobyla_reason(status),
-                    );
+                    if iprint > 0 as libc::c_int as libc::c_long {
+                        println!(
+                            "Return from subroutine COBYLA because {:?}.\n",
+                            cobyla_reason(status),
+                        );
+                    }
                     current_block = 2880604979707412946;
                     break;
                 } else if status == 2 as libc::c_int {
@@ -1612,15 +1611,14 @@ unsafe fn cobylb(
         );
     }
     'c_3166: loop {
-        if nfvals >= maxfun
-            && nfvals > 0 as libc::c_int as libc::c_long
-            && iprint > 0 as libc::c_int as libc::c_long
-        {
+        if nfvals >= maxfun && nfvals > 0 as libc::c_int as libc::c_long {
             status = -(2 as libc::c_int);
-            println!(
-                "Return from subroutine COBYLA because {:?}.\n",
-                cobyla_reason(status),
-            );
+            if iprint > 0 as libc::c_int as libc::c_long {
+                println!(
+                    "Return from subroutine COBYLA because {:?}.\n",
+                    cobyla_reason(status),
+                );
+            }
             current_block = 18034400475116118263;
             break;
         } else {
