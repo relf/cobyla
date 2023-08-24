@@ -463,9 +463,7 @@ pub unsafe extern "C" fn cobyla_iterate(
     'c_12387: loop {
         match current_block {
             14453151562619017203 => {
-                if nfvals >= maxfun && nfvals > 0 as libc::c_int as libc::c_long
-                    && iprint > 0 as libc::c_int as libc::c_long
-                {
+                if nfvals >= maxfun && nfvals > 0 as libc::c_int as libc::c_long {
                     status = -(2 as libc::c_int);
                     fprintf(
                         stderr,
@@ -1646,9 +1644,7 @@ unsafe extern "C" fn cobylb(
         );
     }
     'c_3166: loop {
-        if nfvals >= maxfun && nfvals > 0 as libc::c_int as libc::c_long
-            && iprint > 0 as libc::c_int as libc::c_long
-        {
+        if nfvals >= maxfun && nfvals > 0 as libc::c_int as libc::c_long {
             status = -(2 as libc::c_int);
             fprintf(
                 stderr,
