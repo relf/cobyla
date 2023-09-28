@@ -27,6 +27,8 @@
 mod cobyla;
 use crate::cobyla::raw_cobyla;
 
+mod nlopt_cobyla;
+
 mod cobyla_solver;
 mod cobyla_state;
 pub use crate::cobyla_solver::*;
@@ -86,7 +88,7 @@ fn function_raw_callback<F: ObjFn<U>, G: CstrFn, U>(
     }
 
     // Important: we don't want f to get dropped at this point
-    #[allow(clippy::forget_ref)]
+    #[allow(forgetting_references)]
     std::mem::forget(f);
     res
 }
@@ -209,15 +211,17 @@ pub fn fmin_cobyla<'a, F: ObjFn<U>, G: CstrFn, U>(
     };
     // Convert the raw pointer back into a Box with the Box::from_raw function,
     // allowing the Box destructor to perform the cleanup.
-    unsafe { Box::from_raw(fn_cfg_ptr) };
+    unsafe { drop(Box::from_raw(fn_cfg_ptr as *mut usize)) };
     (status, x)
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use approx::assert_abs_diff_eq;
 
-    use super::*;
+    use crate::nlopt_cobyla::cobyla_minimize;
+    use crate::nlopt_cobyla::nlopt_stopping;
 
     /////////////////////////////////////////////////////////////////////////
     // First problem (see cobyla.c case 1)
@@ -366,5 +370,71 @@ mod tests {
             [sqrt_0_5, sqrt_0_5].as_slice(),
             epsilon = 1e-4
         );
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// NlOpt cobyla
+
+    extern "C" fn nlopt_paraboloid(
+        _n: libc::c_uint,
+        x: *const libc::c_double,
+        _gradient: *mut libc::c_double,
+        _func_data: *mut libc::c_void,
+    ) -> libc::c_double {
+        unsafe {
+            let r1 = *x.offset(0) + 1.0;
+            let r2 = *x.offset(1);
+            10.0 * (r1 * r1) + (r2 * r2) as libc::c_double
+        }
+    }
+
+    #[test]
+    fn test_nlopt_cobyla_minimize() {
+        let mut x = vec![1., 1.];
+        let mut lb = vec![-10.0, -10.0];
+        let mut ub = vec![10.0, 10.0];
+        let mut dx = vec![0.5, 0.5];
+        let mut minf = 0.;
+        let mut nevals_p = 0;
+        let mut force_stop = 0;
+
+        let mut stop = nlopt_stopping {
+            n: 2,
+            minf_max: 0.0,
+            ftol_rel: 0.0,
+            ftol_abs: 0.0,
+            xtol_rel: 0.0,
+            xtol_abs: std::ptr::null(),
+            x_weights: std::ptr::null(),
+            nevals_p: &mut nevals_p,
+            maxeval: 1000,
+            maxtime: 0.0,
+            start: 0.0,
+            force_stop: &mut force_stop,
+            stop_msg: "".to_string(),
+        };
+
+        let res = unsafe {
+            cobyla_minimize(
+                2,
+                Some(nlopt_paraboloid),
+                std::ptr::null_mut(),
+                0,
+                std::ptr::null_mut(),
+                0,
+                std::ptr::null_mut(),
+                lb.as_mut_ptr(),
+                ub.as_mut_ptr(),
+                x.as_mut_ptr(),
+                &mut minf,
+                &mut stop,
+                dx.as_mut_ptr(),
+            )
+        };
+
+        println!("status = {:?}", res);
+        println!("x = {:?}", x);
+
+        assert_abs_diff_eq!(x.as_slice(), [-1., 0.].as_slice(), epsilon = 1e-4);
     }
 }
