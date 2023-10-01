@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/home/rlafage/workspace/cobyla/build",
+  "command": "/usr/bin/cc  -I/home/rlafage/workspace/cobyla/cobyla    -o CMakeFiles/cobyla.dir/cobyla.c.o   -c /home/rlafage/workspace/cobyla/cobyla/cobyla.c",
+  "file": "/home/rlafage/workspace/cobyla/cobyla/cobyla.c"
+}
+]
