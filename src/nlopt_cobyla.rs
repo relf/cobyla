@@ -20,6 +20,7 @@
 
 use std::convert::TryFrom;
 use std::rc::Rc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 enum Io {
     stderr,
@@ -210,31 +211,44 @@ pub const COBYLA_MSG_ITER: C2RustUnnamed = 2;
 pub const COBYLA_MSG_EXIT: C2RustUnnamed = 1;
 #[no_mangle]
 pub unsafe extern "C" fn nlopt_time_seed() -> libc::c_ulong {
-    let mut tv = libc::timeval {
-        tv_sec: 0,
-        tv_usec: 0,
-    };
-    libc::gettimeofday(&mut tv, 0 as *mut libc::timezone);
-    return (tv.tv_sec ^ tv.tv_usec) as libc::c_ulong;
+    // let mut tv = libc::timeval {
+    //     tv_sec: 0,
+    //     tv_usec: 0,
+    // };
+    // libc::gettimeofday(&mut tv, 0 as *mut libc::timezone);
+    //return (tv.tv_sec ^ tv.tv_usec) as libc::c_ulong;
+    let start = SystemTime::now();
+    let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Time flies");
+    since_the_epoch.as_millis() as libc::c_ulong
 }
 #[no_mangle]
 pub unsafe extern "C" fn nlopt_seconds() -> libc::c_double {
-    static mut start_inited: libc::c_int = 0 as libc::c_int;
-    static mut start: libc::timeval = libc::timeval {
-        tv_sec: 0,
-        tv_usec: 0,
-    };
-    let mut tv: libc::timeval = libc::timeval {
-        tv_sec: 0,
-        tv_usec: 0,
-    };
-    if start_inited == 0 {
-        start_inited = 1 as libc::c_int;
-        libc::gettimeofday(&mut start, 0 as *mut libc::timezone);
+    // static mut start_inited: libc::c_int = 0 as libc::c_int;
+    // static mut start: libc::timeval = libc::timeval {
+    //     tv_sec: 0,
+    //     tv_usec: 0,
+    // };
+    // let mut tv: libc::timeval = libc::timeval {
+    //     tv_sec: 0,
+    //     tv_usec: 0,
+    // };
+    // if start_inited == 0 {
+    //     start_inited = 1 as libc::c_int;
+    //     libc::gettimeofday(&mut start, 0 as *mut libc::timezone);
+    // }
+    // libc::gettimeofday(&mut tv, 0 as *mut libc::timezone);
+    // return (tv.tv_sec - start.tv_sec) as libc::c_double
+    //     + 1.0e-6f64 * (tv.tv_usec - start.tv_usec) as libc::c_double;
+    static mut start_inited: bool = false;
+    static mut start: SystemTime = UNIX_EPOCH;
+    if !start_inited {
+        start_inited = true;
+        start = SystemTime::now();
     }
-    libc::gettimeofday(&mut tv, 0 as *mut libc::timezone);
-    return (tv.tv_sec - start.tv_sec) as libc::c_double
-        + 1.0e-6f64 * (tv.tv_usec - start.tv_usec) as libc::c_double;
+    start
+        .duration_since(UNIX_EPOCH)
+        .expect("Time flies")
+        .as_secs_f64()
 }
 unsafe extern "C" fn sc(
     mut x: libc::c_double,
