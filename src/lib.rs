@@ -184,7 +184,8 @@ pub fn fmin_cobyla<'a, F: ObjFn<U>, G: CstrFn, U>(
     let n: i32 = x0.len() as i32;
     let m: i32 = cons.len() as i32;
 
-    // Our strategy is to pass the actual objective function as part of the
+    // Trick from nlopt-rust: https://github.com/adwhit/rust-nlopt
+    // The strategy is to pass the actual objective function as part of the
     // parameters to the callback. For this we pack it inside a FunctionCfg struct.
     // We allocate our FunctionCfg on the heap and pass a pointer to the C lib
     // (This is pretty unsafe but it works).
@@ -222,6 +223,10 @@ pub fn fmin_cobyla<'a, F: ObjFn<U>, G: CstrFn, U>(
     (status, x)
 }
 
+/// Cobyla implementation generated from NLopt 2.7.1: https://github.com/stevengj/nlopt
+/// and plugged as what is done in the NLopt rust binding: https://github.com/adwhit/rust-nlopt
+/// but using the same API as fmin_cobyla (which is a bit backward as NLopt API is richer)
+/// The idea here is to be able to easily to switch between the two implementations.
 #[allow(clippy::useless_conversion)]
 #[allow(clippy::too_many_arguments)]
 pub fn nlopt_cobyla<'a, F: NLoptObjFn<U>, G: NLoptObjFn<U>, U: Clone>(
@@ -234,10 +239,6 @@ pub fn nlopt_cobyla<'a, F: NLoptObjFn<U>, G: NLoptObjFn<U>, U: Clone>(
     maxfun: i32,
     _iprint: i32,
 ) -> (i32, &'a [f64]) {
-    // Our strategy is to pass the actual objective function as part of the
-    // parameters to the callback. For this we pack it inside a FunctionCfg struct.
-    // We allocate our FunctionCfg on the heap and pass a pointer to the C lib
-    // (This is pretty unsafe but it works).
     let fn_cfg = Box::new(NLoptFunctionCfg {
         objective_fn: func,
         user_data: args.clone(), // move user_data into FunctionCfg
