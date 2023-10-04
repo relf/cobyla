@@ -22,6 +22,44 @@ use std::convert::TryFrom;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use std::os::raw::c_void;
+use std::slice;
+
+fn nlopt_constraint_raw_callback<F: NLoptObjFn<T>, T>(
+    n: libc::c_uint,
+    x: *const f64,
+    g: *mut f64,
+    params: *mut libc::c_void,
+) -> f64 {
+    // Since ConstraintCfg is just an alias for FunctionCfg,
+    // this function is identical to above
+    let f = unsafe { &mut *(params as *mut NLoptConstraintCfg<F, T>) };
+    let argument = unsafe { slice::from_raw_parts(x, n as usize) };
+    let gradient = if g.is_null() {
+        None
+    } else {
+        Some(unsafe { slice::from_raw_parts_mut(g, n as usize) })
+    };
+    (f.constraint_fn)(argument, gradient, &mut f.user_data)
+}
+
+struct NLoptConstraintCfg<F: NLoptObjFn<T>, T> {
+    pub constraint_fn: F,
+    pub user_data: T,
+}
+
+/// A trait representing an objective function.
+///
+/// An objective function takes the form of a closure `f(x: &[f64], gradient: Option<&mut [f64], user_data: &mut U) -> f64`
+///
+/// * `x` - `n`-dimensional array
+/// * `gradient` - `n`-dimensional array to store the gradient `grad f(x)`. If `gradient` matches
+/// `Some(x)`, the user is required to provide a gradient, otherwise the optimization will
+/// probabely fail.
+/// * `user_data` - user defined data
+pub trait NLoptObjFn<U>: Fn(&[f64], Option<&mut [f64]>, &mut U) -> f64 {}
+
+impl<T, U> NLoptObjFn<U> for T where T: Fn(&[f64], Option<&mut [f64]>, &mut U) -> f64 {}
 enum Io {
     stderr,
     stdout,
@@ -631,7 +669,8 @@ pub unsafe fn nlopt_eval_constraint(
 ) {
     if ((*c).f).is_some() {
         *result.offset(0 as libc::c_int as isize) =
-            ((*c).f).expect("non-null function pointer")(n, x, grad, (*c).f_data);
+        //    ((*c).f).expect("non-null function pointer")(n, x, grad, (*c).f_data);
+        nlopt_constraint_raw_callback::<&dyn NLoptObjFn<()>, ()>(n, x, grad, (*c).f_data);
     } else {
         ((*c).mf).expect("non-null function pointer")((*c).m, result, n, x, grad, (*c).f_data);
     };

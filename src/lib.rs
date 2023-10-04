@@ -30,7 +30,7 @@ use nlopt_cobyla::nlopt_constraint;
 use crate::cobyla::raw_cobyla;
 
 mod nlopt_cobyla;
-use crate::nlopt_cobyla::{cobyla_minimize, nlopt_stopping};
+use crate::nlopt_cobyla::{cobyla_minimize, nlopt_eval_constraint, nlopt_stopping};
 
 mod cobyla_solver;
 mod cobyla_state;
@@ -235,10 +235,7 @@ fn nlopt_function_raw_callback<F: NLoptObjFn<T>, T>(
 
     // recover FunctionCfg object from supplied params and call
     let f = unsafe { &mut *(params as *mut NLoptFunctionCfg<F, T>) };
-    println!("callback OBJ pointer = {:p}", &(f.objective_fn));
-    let res = (f.objective_fn)(argument, gradient, &mut f.user_data);
-    // println!("obj = {}", res);
-    res
+    (f.objective_fn)(argument, gradient, &mut f.user_data)
 }
 
 fn nlopt_constraint_raw_callback<F: NLoptObjFn<T>, T>(
@@ -311,18 +308,13 @@ pub fn nlopt_cobyla<'a, F: NLoptObjFn<U>, G: NLoptObjFn<U>, U: Clone>(
     let fn_cfg_ptr = Box::into_raw(fn_cfg) as *mut c_void;
     let mut cstr_tol = 1e-4;
 
-    let mut cstr_cfg_ptr = cons
+    let mut cstr_cfg = cons
         .iter()
         .map(|c| {
             let c_cfg = Box::new(NLoptConstraintCfg {
-                constraint_fn: c,
+                constraint_fn: c as &dyn NLoptObjFn<U>,
                 user_data: args.clone(), // move user_data into FunctionCfg
             });
-            println!("cstr pointer {:p}", &(c_cfg.constraint_fn));
-            println!(
-                "eval cstr ={}",
-                (c_cfg.constraint_fn)(&[1., 1.], None, &mut args.clone())
-            );
             let c_cfg_ptr = Box::into_raw(c_cfg) as *mut c_void;
 
             nlopt_constraint {
@@ -366,13 +358,51 @@ pub fn nlopt_cobyla<'a, F: NLoptObjFn<U>, G: NLoptObjFn<U>, U: Clone>(
         stop_msg: "".to_string(),
     };
 
+    let mut xtest = vec![1., 1.];
+    unsafe {
+        let mut result = -666.;
+        let nc = cstr_cfg[0];
+        let fc = &nc as *const nlopt_constraint;
+
+        let res = nlopt_constraint_raw_callback::<&dyn NLoptObjFn<()>, ()>(
+            2,
+            xtest.as_mut_ptr(),
+            std::ptr::null_mut::<libc::c_double>(),
+            (nc).f_data,
+        );
+        println!(
+            "###################################### JUST direct RUN = {}",
+            res,
+        );
+
+        let res = ((*fc).f.expect("func"))(
+            2,
+            xtest.as_mut_ptr(),
+            std::ptr::null_mut::<libc::c_double>(),
+            (*fc).f_data,
+        );
+        println!(
+            "###################################### JUST direct RUN = {}",
+            res,
+        );
+
+        nlopt_eval_constraint(
+            &mut result,
+            std::ptr::null_mut::<libc::c_double>(),
+            fc,
+            n,
+            x.as_mut_ptr(),
+        );
+        println!("############################### TEST EVAL()={}", result);
+    }
+
     let status = unsafe {
         cobyla_minimize(
             n.into(),
             Some(nlopt_function_raw_callback::<F, U>),
             fn_cfg_ptr,
             m.into(),
-            cstr_cfg_ptr.as_mut_ptr(),
+            cstr_cfg.as_mut_ptr(),
             0,
             std::ptr::null_mut(),
             lb.as_ptr(),
@@ -643,11 +673,11 @@ mod tests {
     }
 
     fn cstr1(x: &[f64], _g: Option<&mut [f64]>, _user_data: &mut ()) -> f64 {
-        println!("cstr1={}", x[1] - x[0] * x[0]);
+        println!("IN cstr1={}", x[1] - x[0] * x[0]);
         x[1] - x[0] * x[0]
     }
     fn cstr2(x: &[f64], _g: Option<&mut [f64]>, _user_data: &mut ()) -> f64 {
-        println!("cstr1={}", 1. - x[0] * x[0] - x[1] * x[1]);
+        println!("IN cstr2={}", 1. - x[0] * x[0] - x[1] * x[1]);
         1. - x[0] * x[0] - x[1] * x[1]
     }
 
@@ -657,7 +687,8 @@ mod tests {
 
         let cons = vec![&cstr1 as &dyn NLoptObjFn<()>, &cstr2 as &dyn NLoptObjFn<()>];
 
-        let (status, x_opt) = nlopt_cobyla(nlopt_fletcher9115, &mut x, &cons, (), 0.5, 1e-4, 10, 1);
+        let (status, x_opt) =
+            nlopt_cobyla(nlopt_fletcher9115, &mut x, &cons, (), 0.5, 1e-4, 200, 1);
         println!("status = {}", status);
         println!("x = {:?}", x_opt);
 
