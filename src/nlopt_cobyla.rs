@@ -15,14 +15,14 @@
     clippy::neg_cmp_op_on_partial_ord,
     clippy::single_match,
     clippy::unnecessary_cast,
-    clippy::excessive_precision
+    clippy::excessive_precision,
+    clippy::too_many_arguments
 )]
 
 use std::convert::TryFrom;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use std::os::raw::c_void;
 use std::slice;
 
 fn nlopt_constraint_raw_callback<F: NLoptObjFn<T>, T>(
@@ -669,6 +669,7 @@ pub unsafe fn nlopt_eval_constraint(
 ) {
     if ((*c).f).is_some() {
         *result.offset(0 as libc::c_int as isize) =
+        // PATCH Weird bug ((*c).f).expect("non-null function pointer") calls the objective function!!!
         //    ((*c).f).expect("non-null function pointer")(n, x, grad, (*c).f_data);
         nlopt_constraint_raw_callback::<&dyn NLoptObjFn<()>, ()>(n, x, grad, (*c).f_data);
     } else {

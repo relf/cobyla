@@ -235,7 +235,10 @@ fn nlopt_function_raw_callback<F: NLoptObjFn<T>, T>(
 
     // recover FunctionCfg object from supplied params and call
     let f = unsafe { &mut *(params as *mut NLoptFunctionCfg<F, T>) };
-    (f.objective_fn)(argument, gradient, &mut f.user_data)
+    let res = (f.objective_fn)(argument, gradient, &mut f.user_data);
+    #[allow(forgetting_references)]
+    std::mem::forget(f);
+    res
 }
 
 fn nlopt_constraint_raw_callback<F: NLoptObjFn<T>, T>(
@@ -256,6 +259,8 @@ fn nlopt_constraint_raw_callback<F: NLoptObjFn<T>, T>(
     };
     println!("callback CSTR pointer = {:p}", &(f.constraint_fn));
     let res = (f.constraint_fn)(argument, gradient, &mut f.user_data);
+    #[allow(forgetting_references)]
+    std::mem::forget(f);
     //println!("cstr = {}", res);
     res
 }
@@ -335,8 +340,8 @@ pub fn nlopt_cobyla<'a, F: NLoptObjFn<U>, G: NLoptObjFn<U>, U: Clone>(
 
     let lb = vec![-f64::INFINITY; n as usize];
     let ub = vec![f64::INFINITY; n as usize];
-    let xtol_abs = vec![0; n as usize];
-    let x_weights = vec![0; n as usize];
+    let xtol_abs = vec![0.; n as usize];
+    let x_weights = vec![0.; n as usize];
     let mut dx = vec![rhobeg; n as usize];
     let mut minf = f64::INFINITY;
     let mut nevals_p = 0;
@@ -348,8 +353,8 @@ pub fn nlopt_cobyla<'a, F: NLoptObjFn<U>, G: NLoptObjFn<U>, U: Clone>(
         ftol_rel: 0.0,
         ftol_abs: 0.0,
         xtol_rel: rhoend / rhobeg,
-        xtol_abs: std::ptr::null(),
-        x_weights: std::ptr::null(),
+        xtol_abs: xtol_abs.as_ptr(),
+        x_weights: x_weights.as_ptr(),
         nevals_p: &mut nevals_p,
         maxeval: maxfun.into(),
         maxtime: 0.0,
@@ -358,42 +363,53 @@ pub fn nlopt_cobyla<'a, F: NLoptObjFn<U>, G: NLoptObjFn<U>, U: Clone>(
         stop_msg: "".to_string(),
     };
 
-    let mut xtest = vec![1., 1.];
-    unsafe {
-        let mut result = -666.;
-        let nc = cstr_cfg[0];
-        let fc = &nc as *const nlopt_constraint;
+    // XXX: Weird bug. Can not pass nlopt_constraint_raw_callback
+    // Work around is to patch nlopt_eval_constraint to use nlopt_constraint_raw_callback directly
+    if !cons.is_empty() {
+        let mut xtest = vec![1., 1.];
+        unsafe {
+            let mut result = -666.;
+            let nc = cstr_cfg[0];
+            let fc = &nc as *const nlopt_constraint;
 
-        let res = nlopt_constraint_raw_callback::<&dyn NLoptObjFn<()>, ()>(
-            2,
-            xtest.as_mut_ptr(),
-            std::ptr::null_mut::<libc::c_double>(),
-            (nc).f_data,
-        );
-        println!(
-            "###################################### JUST direct RUN = {}",
-            res,
-        );
+            // It works: cstr1 is called
+            let res = nlopt_constraint_raw_callback::<&dyn NLoptObjFn<()>, ()>(
+                2,
+                xtest.as_mut_ptr(),
+                std::ptr::null_mut::<libc::c_double>(),
+                (nc).f_data,
+            );
+            println!(
+                "###################################### JUST direct RUN = {}",
+                res,
+            );
 
-        let res = ((*fc).f.expect("func"))(
-            2,
-            xtest.as_mut_ptr(),
-            std::ptr::null_mut::<libc::c_double>(),
-            (*fc).f_data,
-        );
-        println!(
-            "###################################### JUST direct RUN = {}",
-            res,
-        );
+            // XXX: Weird bug!
+            // If fails : (*fc).f does call nlopt_constraint_raw_callback but
+            // when unpacking (*fc).f_data with unsafe f = { &mut *(params as *mut NLoptConstraintCfg<F, T>) };
+            // (*f).constraint_fn(...) calls the objective function instead of the constraint function!!!
+            let res = ((*fc).f.expect("func"))(
+                2,
+                xtest.as_mut_ptr(),
+                std::ptr::null_mut::<libc::c_double>(),
+                (*fc).f_data,
+            );
+            println!(
+                "###################################### JUST direct RUN = {}",
+                res,
+            );
 
-        nlopt_eval_constraint(
-            &mut result,
-            std::ptr::null_mut::<libc::c_double>(),
-            fc,
-            n,
-            x.as_mut_ptr(),
-        );
-        println!("############################### TEST EVAL()={}", result);
+            // It works: cstr1 is called
+            // we use directly a copy of specialized nlopt_constraint_raw_callback
+            nlopt_eval_constraint(
+                &mut result,
+                std::ptr::null_mut::<libc::c_double>(),
+                fc,
+                n,
+                x.as_mut_ptr(),
+            );
+            println!("############################### TEST EVAL()={}", result);
+        }
     }
 
     let status = unsafe {
@@ -650,39 +666,38 @@ mod tests {
     }
 
     #[test]
-    fn test_nlopt_cobyla() {
+    fn test_nlopt_paraboloid() {
         let mut x = vec![1., 1.];
 
         // #[allow(bare_trait_objects)]
-        let mut cons: Vec<&dyn NLoptObjFn<_>> = vec![];
-        let cstr1 = |x: &[f64], _g: Option<&mut [f64]>, _user_data: &mut f64| x[0];
-        cons.push(&cstr1);
+        let mut cons: Vec<&dyn NLoptObjFn<()>> = vec![];
+        let cstr1 = |x: &[f64], _g: Option<&mut [f64]>, _user_data: &mut ()| {
+            println!("call cstr1 = {}", -x[0]);
+            -x[0]
+        };
+        cons.push(&cstr1 as &dyn NLoptObjFn<()>);
 
         // x_opt = [0, 0]
-        let g: Vec<&dyn NLoptObjFn<()>> = vec![];
-        let (status, x_opt) = nlopt_cobyla(nlopt_paraboloid, &mut x, &g, (), 0.5, 1e-6, 200, 1);
+        let (status, x_opt) = nlopt_cobyla(nlopt_paraboloid, &mut x, &cons, (), 0.5, 1e-6, 200, 1);
         println!("status = {}", status);
         println!("x = {:?}", x_opt);
 
-        assert_abs_diff_eq!(x.as_slice(), [-1., 0.].as_slice(), epsilon = 1e-4);
+        assert_abs_diff_eq!(x.as_slice(), [0., 0.].as_slice(), epsilon = 1e-4);
     }
 
     fn nlopt_fletcher9115(x: &[f64], _g: Option<&mut [f64]>, _user_data: &mut ()) -> f64 {
-        println!("Objective ={}", -x[0] - x[1]);
         -x[0] - x[1]
     }
 
     fn cstr1(x: &[f64], _g: Option<&mut [f64]>, _user_data: &mut ()) -> f64 {
-        println!("IN cstr1={}", x[1] - x[0] * x[0]);
-        x[1] - x[0] * x[0]
+        -(x[1] - x[0] * x[0])
     }
     fn cstr2(x: &[f64], _g: Option<&mut [f64]>, _user_data: &mut ()) -> f64 {
-        println!("IN cstr2={}", 1. - x[0] * x[0] - x[1] * x[1]);
-        1. - x[0] * x[0] - x[1] * x[1]
+        -(1. - x[0] * x[0] - x[1] * x[1])
     }
 
     #[test]
-    fn test_nlopt_cobyla2() {
+    fn test_nlopt_fletcher() {
         let mut x = vec![1., 1.];
 
         let cons = vec![&cstr1 as &dyn NLoptObjFn<()>, &cstr2 as &dyn NLoptObjFn<()>];
