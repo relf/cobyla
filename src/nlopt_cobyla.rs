@@ -25,14 +25,34 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use std::slice;
 
-fn nlopt_constraint_raw_callback<F: NLoptObjFn<T>, T>(
+pub fn nlopt_function_raw_callback<F: NLoptObjFn<T>, T>(
     n: libc::c_uint,
     x: *const f64,
     g: *mut f64,
     params: *mut libc::c_void,
 ) -> f64 {
-    // Since ConstraintCfg is just an alias for FunctionCfg,
-    // this function is identical to above
+    // prepare args
+    let argument = unsafe { slice::from_raw_parts(x, n as usize) };
+    let gradient = if g.is_null() {
+        None
+    } else {
+        Some(unsafe { slice::from_raw_parts_mut(g, n as usize) })
+    };
+
+    // recover FunctionCfg object from supplied params and call
+    let f = unsafe { &mut *(params as *mut NLoptFunctionCfg<F, T>) };
+    let res = (f.objective_fn)(argument, gradient, &mut f.user_data);
+    #[allow(forgetting_references)]
+    std::mem::forget(f);
+    res
+}
+
+pub fn nlopt_constraint_raw_callback<F: NLoptObjFn<T>, T>(
+    n: libc::c_uint,
+    x: *const f64,
+    g: *mut f64,
+    params: *mut libc::c_void,
+) -> f64 {
     let f = unsafe { &mut *(params as *mut NLoptConstraintCfg<F, T>) };
     let argument = unsafe { slice::from_raw_parts(x, n as usize) };
     let gradient = if g.is_null() {
@@ -43,7 +63,13 @@ fn nlopt_constraint_raw_callback<F: NLoptObjFn<T>, T>(
     (f.constraint_fn)(argument, gradient, &mut f.user_data)
 }
 
-struct NLoptConstraintCfg<F: NLoptObjFn<T>, T> {
+/// Packs an objective function with a user defined parameter set of type `T`.
+pub struct NLoptFunctionCfg<F: NLoptObjFn<T>, T> {
+    pub objective_fn: F,
+    pub user_data: T,
+}
+
+pub struct NLoptConstraintCfg<F: NLoptObjFn<T>, T> {
     pub constraint_fn: F,
     pub user_data: T,
 }
@@ -659,8 +685,8 @@ pub unsafe fn nlopt_max_constraint_dim(
     }
     return max_dim;
 }
-#[no_mangle]
-pub unsafe fn nlopt_eval_constraint(
+
+pub unsafe fn nlopt_eval_constraint<U>(
     mut result: *mut libc::c_double,
     mut grad: *mut libc::c_double,
     mut c: *const nlopt_constraint,
@@ -670,8 +696,10 @@ pub unsafe fn nlopt_eval_constraint(
     if ((*c).f).is_some() {
         *result.offset(0 as libc::c_int as isize) =
         // PATCH Weird bug ((*c).f).expect("non-null function pointer") calls the objective function!!!
+        // even if (*c), nlopt_constraint object was correctly built with a nlopt_constraint_raw_callback!!! 
         //    ((*c).f).expect("non-null function pointer")(n, x, grad, (*c).f_data);
-        nlopt_constraint_raw_callback::<&dyn NLoptObjFn<()>, ()>(n, x, grad, (*c).f_data);
+        // Maybe the U generic parameter required explains it cannot work like with C ???
+        nlopt_constraint_raw_callback::<&dyn NLoptObjFn<U>, U>(n, x, grad, (*c).f_data);
     } else {
         ((*c).mf).expect("non-null function pointer")((*c).m, result, n, x, grad, (*c).f_data);
     };
@@ -798,7 +826,7 @@ pub unsafe fn nlopt_reorder_bounds(
         i = i.wrapping_add(1);
     }
 }
-unsafe fn func_wrap(
+unsafe fn func_wrap<U>(
     mut ni: libc::c_int,
     mut _mi: libc::c_int,
     mut x: *mut libc::c_double,
@@ -837,7 +865,7 @@ unsafe fn func_wrap(
     i = 0 as libc::c_int as libc::c_uint;
     j = 0 as libc::c_int as libc::c_uint;
     while j < (*s).m_orig {
-        nlopt_eval_constraint(
+        nlopt_eval_constraint::<U>(
             con.offset(i as isize),
             0 as *mut libc::c_double,
             ((*s).fc).offset(j as isize),
@@ -857,7 +885,7 @@ unsafe fn func_wrap(
     }
     j = 0 as libc::c_int as libc::c_uint;
     while j < (*s).p {
-        nlopt_eval_constraint(
+        nlopt_eval_constraint::<U>(
             con.offset(i as isize),
             0 as *mut libc::c_double,
             ((*s).h).offset(j as isize),
@@ -896,8 +924,7 @@ unsafe fn func_wrap(
     }
     return 0 as libc::c_int;
 }
-#[no_mangle]
-pub unsafe fn cobyla_minimize(
+pub unsafe fn cobyla_minimize<U>(
     mut n: libc::c_uint,
     mut f: nlopt_func,
     mut f_data: *mut libc::c_void,
@@ -1096,7 +1123,7 @@ pub unsafe fn cobyla_minimize(
                                     s.ub,
                                     COBYLA_MSG_NONE as libc::c_int,
                                     Some(
-                                        func_wrap
+                                        func_wrap::<U>
                                             as unsafe fn(
                                                 libc::c_int,
                                                 libc::c_int,

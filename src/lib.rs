@@ -30,7 +30,10 @@ use nlopt_cobyla::nlopt_constraint;
 use crate::cobyla::raw_cobyla;
 
 mod nlopt_cobyla;
-use crate::nlopt_cobyla::{cobyla_minimize, nlopt_eval_constraint, nlopt_stopping};
+use crate::nlopt_cobyla::{
+    cobyla_minimize, nlopt_constraint_raw_callback, nlopt_eval_constraint,
+    nlopt_function_raw_callback, nlopt_stopping, NLoptConstraintCfg, NLoptFunctionCfg, NLoptObjFn,
+};
 
 mod cobyla_solver;
 mod cobyla_state;
@@ -219,76 +222,6 @@ pub fn fmin_cobyla<'a, F: ObjFn<U>, G: CstrFn, U>(
     (status, x)
 }
 
-fn nlopt_function_raw_callback<F: NLoptObjFn<T>, T>(
-    n: libc::c_uint,
-    x: *const f64,
-    g: *mut f64,
-    params: *mut c_void,
-) -> f64 {
-    // prepare args
-    let argument = unsafe { slice::from_raw_parts(x, n as usize) };
-    let gradient = if g.is_null() {
-        None
-    } else {
-        Some(unsafe { slice::from_raw_parts_mut(g, n as usize) })
-    };
-
-    // recover FunctionCfg object from supplied params and call
-    let f = unsafe { &mut *(params as *mut NLoptFunctionCfg<F, T>) };
-    let res = (f.objective_fn)(argument, gradient, &mut f.user_data);
-    #[allow(forgetting_references)]
-    std::mem::forget(f);
-    res
-}
-
-fn nlopt_constraint_raw_callback<F: NLoptObjFn<T>, T>(
-    n: libc::c_uint,
-    x: *const f64,
-    g: *mut f64,
-    params: *mut c_void,
-) -> f64 {
-    println!("nlopt_constraint_raw_callback");
-    // Since ConstraintCfg is just an alias for FunctionCfg,
-    // this function is identical to above
-    let f = unsafe { &mut *(params as *mut NLoptConstraintCfg<F, T>) };
-    let argument = unsafe { slice::from_raw_parts(x, n as usize) };
-    let gradient = if g.is_null() {
-        None
-    } else {
-        Some(unsafe { slice::from_raw_parts_mut(g, n as usize) })
-    };
-    println!("callback CSTR pointer = {:p}", &(f.constraint_fn));
-    let res = (f.constraint_fn)(argument, gradient, &mut f.user_data);
-    #[allow(forgetting_references)]
-    std::mem::forget(f);
-    //println!("cstr = {}", res);
-    res
-}
-
-/// Packs an objective function with a user defined parameter set of type `T`.
-struct NLoptFunctionCfg<F: NLoptObjFn<T>, T> {
-    pub objective_fn: F,
-    pub user_data: T,
-}
-
-struct NLoptConstraintCfg<F: NLoptObjFn<T>, T> {
-    pub constraint_fn: F,
-    pub user_data: T,
-}
-
-/// A trait representing an objective function.
-///
-/// An objective function takes the form of a closure `f(x: &[f64], gradient: Option<&mut [f64], user_data: &mut U) -> f64`
-///
-/// * `x` - `n`-dimensional array
-/// * `gradient` - `n`-dimensional array to store the gradient `grad f(x)`. If `gradient` matches
-/// `Some(x)`, the user is required to provide a gradient, otherwise the optimization will
-/// probabely fail.
-/// * `user_data` - user defined data
-pub trait NLoptObjFn<U>: Fn(&[f64], Option<&mut [f64]>, &mut U) -> f64 {}
-
-impl<T, U> NLoptObjFn<U> for T where T: Fn(&[f64], Option<&mut [f64]>, &mut U) -> f64 {}
-
 #[allow(clippy::useless_conversion)]
 #[allow(clippy::too_many_arguments)]
 pub fn nlopt_cobyla<'a, F: NLoptObjFn<U>, G: NLoptObjFn<U>, U: Clone>(
@@ -401,7 +334,7 @@ pub fn nlopt_cobyla<'a, F: NLoptObjFn<U>, G: NLoptObjFn<U>, U: Clone>(
 
             // It works: cstr1 is called
             // we use directly a copy of specialized nlopt_constraint_raw_callback
-            nlopt_eval_constraint(
+            nlopt_eval_constraint::<()>(
                 &mut result,
                 std::ptr::null_mut::<libc::c_double>(),
                 fc,
@@ -413,7 +346,7 @@ pub fn nlopt_cobyla<'a, F: NLoptObjFn<U>, G: NLoptObjFn<U>, U: Clone>(
     }
 
     let status = unsafe {
-        cobyla_minimize(
+        cobyla_minimize::<U>(
             n.into(),
             Some(nlopt_function_raw_callback::<F, U>),
             fn_cfg_ptr,
@@ -638,7 +571,7 @@ mod tests {
         };
 
         let res = unsafe {
-            cobyla_minimize(
+            cobyla_minimize::<()>(
                 2,
                 Some(nlopt_raw_paraboloid),
                 std::ptr::null_mut(),
