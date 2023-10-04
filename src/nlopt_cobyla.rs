@@ -700,6 +700,8 @@ pub unsafe fn nlopt_eval_constraint<U>(
         //    ((*c).f).expect("non-null function pointer")(n, x, grad, (*c).f_data);
         // Maybe the U generic parameter required explains it cannot work like with C ???
         nlopt_constraint_raw_callback::<&dyn NLoptObjFn<U>, U>(n, x, grad, (*c).f_data);
+        // RLA: Take the opposite to manage cstr as being nonnegative in the end like the original cobyla
+        *result.offset(0 as libc::c_int as isize) = -*result.offset(0 as libc::c_int as isize)
     } else {
         ((*c).mf).expect("non-null function pointer")((*c).m, result, n, x, grad, (*c).f_data);
     };
