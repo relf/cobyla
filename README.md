@@ -11,6 +11,15 @@ and take into account constraints on the variables. The algorithm is described i
   > Advances in Optimization and Numerical Analysis Mathematics and Its Applications, vol. 275 (eds. Susana Gomez and Jean-Pierre Hennart), 
   > Kluwer Academic Publishers, pp. 51-67 (1994).
 
+## cobyla 0.4.x
+
+COBYLA implementation coming from the NLopt project is now also available (as `nlopt_cobyla`) allowing to compare 
+with the initial implementation (`fmin_cobyla`). This new implementation went through the same process of using c2rust
+transpilation from initial C implementation.
+
+```bash
+cargo run --example paraboloid
+```
 
 ## cobyla 0.3.x
 
@@ -27,5 +36,6 @@ COBYLA C code has been translated to Rust using [c2rust](https://github.com/immu
 ## cobyla 0.1.x
 
 Rust wrapper for COBYLA optimizer (COBYLA stands for Constrained Optimization BY Linear Approximations). 
-COBYLA C code was copied from [here](https://github.com/emmt/Algorithms/tree/master/cobyla)
+COBYLA C code was copied from [here](https://github.com/emmt/Algorithms/tree/master/cobyla) and wrapped 
+using the callback trick implemented in [nlopt-rust](https://github.com/adwhit/rust-nlopt) project.
 
