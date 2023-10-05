@@ -393,7 +393,7 @@ mod tests {
         let mut x = vec![1., 1.];
 
         #[allow(bare_trait_objects)]
-        let mut cons: Vec<&CstrFn<()>> = vec![];
+        let mut cons: Vec<&dyn CstrFn<()>> = vec![];
         let cstr1 = |x: &[f64], _u: &mut ()| x[0];
         cons.push(&cstr1);
 
