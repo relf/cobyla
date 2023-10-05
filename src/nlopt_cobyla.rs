@@ -84,8 +84,8 @@ pub struct NLoptConstraintCfg<F: NLoptObjFn<T>, T> {
 /// probabely fail.
 /// * `user_data` - user defined data
 pub trait NLoptObjFn<U>: Fn(&[f64], Option<&mut [f64]>, &mut U) -> f64 {}
-
 impl<T, U> NLoptObjFn<U> for T where T: Fn(&[f64], Option<&mut [f64]>, &mut U) -> f64 {}
+
 enum Io {
     stderr,
     stdout,

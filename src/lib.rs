@@ -30,9 +30,10 @@ use nlopt_cobyla::nlopt_constraint;
 use crate::cobyla::raw_cobyla;
 
 mod nlopt_cobyla;
+pub use crate::nlopt_cobyla::NLoptObjFn;
 use crate::nlopt_cobyla::{
     cobyla_minimize, nlopt_constraint_raw_callback, nlopt_eval_constraint,
-    nlopt_function_raw_callback, nlopt_stopping, NLoptConstraintCfg, NLoptFunctionCfg, NLoptObjFn,
+    nlopt_function_raw_callback, nlopt_stopping, NLoptConstraintCfg, NLoptFunctionCfg,
 };
 
 mod cobyla_solver;
@@ -61,19 +62,19 @@ impl<F, U> ObjFn<U> for F where F: Fn(&[f64], &mut U) -> f64 {}
 /// Conversly for a lower bound you would define `|x| x - MIN`
 ///
 /// * `x` - n-dimensional array
-pub trait CstrFn: Fn(&[f64]) -> f64 {}
-impl<F> CstrFn for F where F: Fn(&[f64]) -> f64 {}
+pub trait CstrFn<U>: Fn(&[f64], &mut U) -> f64 {}
+impl<F, U> CstrFn<U> for F where F: Fn(&[f64], &mut U) -> f64 {}
 
 /// Packs a function with a user defined parameter set of type `U`
 /// and constraints to be made positive eventually by the optimizer
-struct FunctionCfg<'a, F: ObjFn<U>, G: CstrFn, U> {
+struct FunctionCfg<'a, F: ObjFn<U>, G: CstrFn<U>, U> {
     pub func: F,
     pub cons: &'a [G],
     pub data: U,
 }
 
 /// Callback interface for Cobyla C code to evaluate objective and constraint functions
-fn function_raw_callback<F: ObjFn<U>, G: CstrFn, U>(
+fn function_raw_callback<F: ObjFn<U>, G: CstrFn<U>, U>(
     n: ::std::os::raw::c_long,
     m: ::std::os::raw::c_long,
     x: *const f64,
@@ -88,7 +89,7 @@ fn function_raw_callback<F: ObjFn<U>, G: CstrFn, U>(
 
     for i in 0..m as isize {
         unsafe {
-            *con.offset(i) = (f.cons[i as usize])(argument);
+            *con.offset(i) = (f.cons[i as usize])(argument, &mut f.data);
         }
     }
 
@@ -113,9 +114,9 @@ fn function_raw_callback<F: ObjFn<U>, G: CstrFn, U>(
 /// let mut x = vec![1., 1.];
 ///
 /// // Constraints definition to be positive eventually
-/// let mut cons: Vec<&dyn CstrFn> = vec![];
-/// cons.push(&|x: &[f64]| x[1] - x[0] * x[0]);
-/// cons.push(&|x: &[f64]| 1. - x[0] * x[0] - x[1] * x[1]);
+/// let mut cons: Vec<&dyn CstrFn<()>> = vec![];
+/// cons.push(&|x: &[f64], _data: &mut ()| x[1] - x[0] * x[0]);
+/// cons.push(&|x: &[f64], _data: &mut ()| 1. - x[0] * x[0] - x[1] * x[1]);
 ///
 /// let (status, x_opt) = fmin_cobyla(paraboloid, &mut x, &cons, (), 0.5, 1e-4, 200, 0);
 /// println!("status = {}", status);
@@ -171,7 +172,7 @@ fn function_raw_callback<F: ObjFn<U>, G: CstrFn, U>(
 ///
 #[allow(clippy::useless_conversion)]
 #[allow(clippy::too_many_arguments)]
-pub fn fmin_cobyla<'a, F: ObjFn<U>, G: CstrFn, U>(
+pub fn fmin_cobyla<'a, F: ObjFn<U>, G: CstrFn<U>, U>(
     func: F,
     x0: &'a mut [f64],
     cons: &[G],
@@ -225,7 +226,7 @@ pub fn fmin_cobyla<'a, F: ObjFn<U>, G: CstrFn, U>(
 
 /// Cobyla implementation generated from NLopt 2.7.1: https://github.com/stevengj/nlopt
 /// and plugged as what is done in the NLopt rust binding: https://github.com/adwhit/rust-nlopt
-/// but using the same API as fmin_cobyla (which is a bit backward as NLopt API is richer)
+/// but using the same API as fmin_cobyla (which is a bit backward as the NLopt API is richer)
 /// The idea here is to be able to easily to switch between the two implementations.
 #[allow(clippy::useless_conversion)]
 #[allow(clippy::too_many_arguments)]
@@ -392,8 +393,8 @@ mod tests {
         let mut x = vec![1., 1.];
 
         #[allow(bare_trait_objects)]
-        let mut cons: Vec<&CstrFn> = vec![];
-        let cstr1 = |x: &[f64]| x[0];
+        let mut cons: Vec<&CstrFn<()>> = vec![];
+        let cstr1 = |x: &[f64], _u: &mut ()| x[0];
         cons.push(&cstr1);
 
         // x_opt = [0, 0]
@@ -462,9 +463,9 @@ mod tests {
     fn test_fmin_cobyla2() {
         let mut x = vec![1., 1.];
 
-        let mut cons: Vec<&dyn CstrFn> = vec![];
-        cons.push(&|x: &[f64]| x[1] - x[0] * x[0]);
-        cons.push(&|x: &[f64]| 1. - x[0] * x[0] - x[1] * x[1]);
+        let mut cons: Vec<&dyn CstrFn<()>> = vec![];
+        cons.push(&|x: &[f64], _u: &mut ()| x[1] - x[0] * x[0]);
+        cons.push(&|x: &[f64], _u: &mut ()| 1. - x[0] * x[0] - x[1] * x[1]);
 
         let (status, x_opt) = fmin_cobyla(fletcher9115, &mut x, &cons, (), 0.5, 1e-4, 200, 0);
         println!("status = {}", status);
