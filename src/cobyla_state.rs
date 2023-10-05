@@ -141,6 +141,30 @@ where
         self.max_iters = iters;
         self
     }
+    /// Alias for max_iters using historic cobyla terminology
+    #[must_use]
+    pub fn maxfun(mut self, maxfun: u64) -> Self {
+        self.max_iters = maxfun;
+        self
+    }
+
+    /// Set maximum number of iterations
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use cobyla::CobylaState;
+    /// # use argmin::core::{State, ArgminFloat};
+    /// # let state: CobylaState = CobylaState::new();
+    /// # assert_eq!(state.max_iters, 1);
+    /// let state = state.iprint(0);
+    /// # assert_eq!(state.max_iters, 0);
+    /// ```
+    #[must_use]
+    pub fn iprint(mut self, iprint: i32) -> Self {
+        self.iprint = iprint;
+        self
+    }
 
     /// Set the current cost function value. This shifts the stored cost function value to the
     /// previous cost function value.
@@ -207,18 +231,18 @@ where
     }
 
     /// Returns the rho end value
-    pub fn rhoend(&self) -> f64 {
+    pub fn get_rhoend(&self) -> f64 {
         self.rhoend
     }
 
     /// Returns the level of printing
-    pub fn iprint(&self) -> i32 {
+    pub fn get_iprint(&self) -> i32 {
         self.iprint
     }
 
     /// Returns cost function calls budget
-    pub fn maxfun(&self) -> i32 {
-        self.maxfun
+    pub fn get_maxfun(&self) -> i32 {
+        self.max_iters as i32
     }
 }
 

@@ -75,9 +75,9 @@ where
         let fx0 = problem.cost(&self.x0)?;
         let m = (fx0.len() - 1) as i32;
         let rhobeg = state.rhobeg();
-        let rhoend = state.rhoend();
-        let iprint = state.iprint();
-        let maxfun = state.maxfun();
+        let rhoend = state.get_rhoend();
+        let iprint = state.get_iprint();
+        let maxfun = state.get_maxfun();
         let mut initial_state = state;
         let ptr = unsafe {
             cobyla_create(

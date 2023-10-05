@@ -1,10 +1,14 @@
 use argmin::core::observers::{ObserverMode, SlogLogger};
 use argmin::core::{CostFunction, Error, Executor};
-use cobyla::{fmin_cobyla, CobylaSolver, CstrFn};
+use cobyla::{fmin_cobyla, nlopt_cobyla, CobylaSolver, CstrFn, NLoptObjFn};
 
 /// Problem cost function
 fn paraboloid(x: &[f64], _data: &mut ()) -> f64 {
     10. * (x[0] + 1.).powf(2.) + x[1].powf(2.)
+}
+
+fn nlopt_paraboloid(x: &[f64], _g: Option<&mut [f64]>, _user_data: &mut ()) -> f64 {
+    paraboloid(x, &mut ())
 }
 
 /// Problem Definition: minimize paraboloid(x) subject to x0 >= 0
@@ -20,32 +24,45 @@ impl CostFunction for ParaboloidProblem {
 }
 
 fn main() {
-    println!("*** Solve paraboloid problem using fmin_cobyla");
     let mut x = vec![1., 1.];
 
-    // Constraint definition x0 >= 0
-    let mut cons: Vec<&dyn CstrFn> = vec![];
-    let cstr1 = |x: &[f64]| x[0];
+    println!("*** Solve paraboloid problem using Cobyla fmin_cobyla implementation");
+    // Constraint definition x0 shoulb be positive in the end
+    let mut cons: Vec<&dyn CstrFn<()>> = vec![];
+    let cstr1 = |x: &[f64], _u: &mut ()| x[0];
     cons.push(&cstr1);
 
-    let (status, x_opt) = fmin_cobyla(paraboloid, &mut x, &cons, (), 0.5, 1e-4, 200, 1);
+    let (status, x_opt) = fmin_cobyla(paraboloid, &mut x, &cons, (), 0.5, 1e-4, 200, 0);
 
+    // For status meaning see cobyla/cobyla.h
     println!("status = {}", status);
     println!("x = {:?}\n\n", x_opt);
-    std::thread::sleep(std::time::Duration::from_secs(1));
 
-    println!("*** Solve paraboloid problem using Cobyla argmin solver");
+    println!("*** Solve paraboloid problem using nlopt_cobyla");
+    let mut cons: Vec<&dyn NLoptObjFn<()>> = vec![];
+    let cstr1 = |x: &[f64], _g: Option<&mut [f64]>, _u: &mut ()| x[0];
+    cons.push(&cstr1);
+
+    let (status, x_opt) = nlopt_cobyla(nlopt_paraboloid, &mut x, &cons, (), 0.5, 1e-4, 200, 0);
+
+    // For status meaning see cobyla/nlopt/nlopt.h
+    println!("status = {}", status);
+    println!("x = {:?}\n\n", x_opt);
+
+    println!(
+        "*** Solve paraboloid problem using Cobyla argmin solver implemented on top of fmin_cobyla impl"
+    );
     let problem = ParaboloidProblem;
     let solver = CobylaSolver::new(vec![1., 1.]);
 
     let res = Executor::new(problem, solver)
-        .configure(|state| state.max_iters(100))
+        .configure(|state| state.max_iters(100).iprint(0))
         .add_observer(SlogLogger::term(), ObserverMode::Always)
         .run()
         .unwrap();
 
     // Wait a second (lets the logger flush everything before printing again)
     std::thread::sleep(std::time::Duration::from_secs(1));
-
-    println!("Result of COBYLA:\n{}", res);
+    println!("*** Result argmin solver impl ***");
+    println!("Result:\n{}", res);
 }
