@@ -156,9 +156,9 @@ where
     /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat};
     /// # let state: CobylaState = CobylaState::new();
-    /// # assert_eq!(state.max_iters, 1);
+    /// # assert_eq!(state.iprint, 1);
     /// let state = state.iprint(0);
-    /// # assert_eq!(state.max_iters, 0);
+    /// # assert_eq!(state.iprint, 0);
     /// ```
     #[must_use]
     pub fn iprint(mut self, iprint: i32) -> Self {
