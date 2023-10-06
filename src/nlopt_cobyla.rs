@@ -20,7 +20,6 @@
 )]
 
 use std::convert::TryFrom;
-use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use std::slice;
@@ -1266,7 +1265,7 @@ pub unsafe fn cobyla(
             fprintf(Io::stderr, "cobyla: memory allocation error.");
         }
         //free(w as *mut libc::c_void);
-        drop(Rc::from_raw(w));
+        let _ = Box::from_raw(w);
         return NLOPT_OUT_OF_MEMORY;
     }
     iact = iact.offset(-1);
@@ -1315,8 +1314,8 @@ pub unsafe fn cobyla(
     w = w.offset(1);
     // free(w as *mut libc::c_void);
     // free(iact as *mut libc::c_void);
-    drop(Rc::from_raw(w));
-    drop(Rc::from_raw(iact));
+    let _ = Box::from_raw(w);
+    let _ = Box::from_raw(iact);
     return rc;
 }
 unsafe fn cobylb(
