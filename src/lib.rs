@@ -20,7 +20,7 @@
 //! Implementation Notes:
 //!
 //! 0.4.x : COBYLA NLopt 2.7.1 implementation is now available as [`nlopt_cobyla`] function. As for the original implementation
-//! fmin_cobyla, it was first generated from C code using c2rust then manually edited to make it work.
+//! [`fmin_cobyla`], it was first generated from C code using c2rust then manually edited to make it work.
 //!
 //! 0.3.x : COBYLA is now also implemented as an argmin::Solver and benefits from [argmin framework](https://github.com/argmin-rs) tooling.
 //!
@@ -110,6 +110,7 @@ fn function_raw_callback<F: ObjFn<U>, G: CstrFn<U>, U>(
 }
 
 /// Minimizes a function using the Constrained Optimization By Linear Approximation (COBYLA) method.
+/// This implementation is a translation of the C code from [here](https://github.com/emmt/Algorithms/tree/master/cobyla)
 ///
 /// This interface is modeled after [scypi.optimize.fmin_cobyla](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.fmin_cobyla.html#scipy-optimize-fmin-cobyla)
 ///
@@ -234,14 +235,19 @@ pub fn fmin_cobyla<'a, F: ObjFn<U>, G: CstrFn<U>, U>(
     (status, x)
 }
 
-/// COBYLA implementation generated from NLopt 2.7.1: https://github.com/stevengj/nlopt
-/// and plugged as what is done in the NLopt rust binding: https://github.com/adwhit/rust-nlopt
-/// but using the same API as fmin_cobyla (which is a bit backward as the NLopt API is richer)
+/// Minimizes a function using the Constrained Optimization By Linear Approximation (COBYLA) method.
+/// This implementation is a translation of [NLopt](https://github.com/stevengj/nlopt) 2.7.1
+///
+/// The API of the implementation [`nlopt_cobyla`] is modeled after the one of
+/// [`fmin_cobyla`] (which is a bit going backward as the NLopt API is richer)
 /// The idea here is to be able to easily to switch between the two implementations.
 ///
-/// Compared to [`fmin_cobyla`], this implementation manage x bounds specifically and
+/// Compared to [`fmin_cobyla`], this implementation manages x bounds specifically and
 /// garantees the objective function is not called outside.
+/// Bounds are passed as a couple of double used to initialize lower and upper bounds for
+/// each component of x.  
 ///
+/// See [NLopt COBYLA](https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/#cobyla-constrained-optimization-by-linear-approximations) documentation.
 /// See [`fmin_cobyla`] for more information.
 #[allow(clippy::useless_conversion)]
 #[allow(clippy::too_many_arguments)]
