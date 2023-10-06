@@ -17,7 +17,7 @@
     clippy::unnecessary_cast
 )]
 
-use std::{convert::TryFrom, rc::Rc};
+use std::convert::TryFrom;
 
 #[repr(C)]
 pub enum CobylaStatus {
@@ -258,7 +258,7 @@ pub unsafe fn cobyla_create(
             .wrapping_mul(::std::mem::size_of::<libc::c_double>() as libc::c_ulong),
     ) as libc::c_long;
     // ctx = malloc(size as libc::c_ulong) as *mut cobyla_context_t;
-    let mut vec: Vec<libc::c_int> = vec![0; usize::try_from(size).unwrap()];
+    let mut vec: Box<Vec<libc::c_int>> = Box::new(vec![0; usize::try_from(size).unwrap()]);
     ctx = vec.as_mut_ptr() as *mut cobyla_context_t;
     std::mem::forget(vec);
 
@@ -308,7 +308,7 @@ pub unsafe fn cobyla_create(
 #[no_mangle]
 pub unsafe fn cobyla_delete(mut ctx: *mut cobyla_context_t) {
     if !ctx.is_null() {
-        drop(Rc::from_raw(ctx));
+        let _ = Box::from_raw(ctx);
     }
 }
 #[no_mangle]

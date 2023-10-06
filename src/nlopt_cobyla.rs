@@ -15,12 +15,75 @@
     clippy::neg_cmp_op_on_partial_ord,
     clippy::single_match,
     clippy::unnecessary_cast,
-    clippy::excessive_precision
+    clippy::excessive_precision,
+    clippy::too_many_arguments
 )]
 
 use std::convert::TryFrom;
-use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+use std::slice;
+
+pub fn nlopt_function_raw_callback<F: NLoptObjFn<T>, T>(
+    n: libc::c_uint,
+    x: *const f64,
+    g: *mut f64,
+    params: *mut libc::c_void,
+) -> f64 {
+    // prepare args
+    let argument = unsafe { slice::from_raw_parts(x, n as usize) };
+    let gradient = if g.is_null() {
+        None
+    } else {
+        Some(unsafe { slice::from_raw_parts_mut(g, n as usize) })
+    };
+
+    // recover FunctionCfg object from supplied params and call
+    let f = unsafe { &mut *(params as *mut NLoptFunctionCfg<F, T>) };
+    let res = (f.objective_fn)(argument, gradient, &mut f.user_data);
+    #[allow(forgetting_references)]
+    std::mem::forget(f);
+    res
+}
+
+pub fn nlopt_constraint_raw_callback<F: NLoptObjFn<T>, T>(
+    n: libc::c_uint,
+    x: *const f64,
+    g: *mut f64,
+    params: *mut libc::c_void,
+) -> f64 {
+    let f = unsafe { &mut *(params as *mut NLoptConstraintCfg<F, T>) };
+    let argument = unsafe { slice::from_raw_parts(x, n as usize) };
+    let gradient = if g.is_null() {
+        None
+    } else {
+        Some(unsafe { slice::from_raw_parts_mut(g, n as usize) })
+    };
+    (f.constraint_fn)(argument, gradient, &mut f.user_data)
+}
+
+/// Packs an objective function with a user defined parameter set of type `T`.
+pub struct NLoptFunctionCfg<F: NLoptObjFn<T>, T> {
+    pub objective_fn: F,
+    pub user_data: T,
+}
+
+pub struct NLoptConstraintCfg<F: NLoptObjFn<T>, T> {
+    pub constraint_fn: F,
+    pub user_data: T,
+}
+
+/// A trait representing an objective function.
+///
+/// An objective function takes the form of a closure `f(x: &[f64], gradient: Option<&mut [f64], user_data: &mut U) -> f64`
+///
+/// * `x` - `n`-dimensional array
+/// * `gradient` - `n`-dimensional array to store the gradient `grad f(x)`. If `gradient` matches
+/// `Some(x)`, the user is required to provide a gradient, otherwise the optimization will
+/// probabely fail.
+/// * `user_data` - user defined data
+pub trait NLoptObjFn<U>: Fn(&[f64], Option<&mut [f64]>, &mut U) -> f64 {}
+impl<T, U> NLoptObjFn<U> for T where T: Fn(&[f64], Option<&mut [f64]>, &mut U) -> f64 {}
 
 enum Io {
     stderr,
@@ -32,7 +95,7 @@ fn fprintf(_io: Io, msg: &str) {
 
 // #![register_tool(c2rust)]
 // #![feature(c_variadic, extern_types, register_tool)]
-// extern "C" {
+//  {
 //     pub type _IO_wide_data;
 //     pub type _IO_codecvt;
 //     pub type _IO_marker;
@@ -112,7 +175,7 @@ pub type va_list = __builtin_va_list;
 // pub type FILE = _IO_FILE;
 
 pub type nlopt_func = Option<
-    extern "C" fn(
+    fn(
         libc::c_uint,
         *const libc::c_double,
         *mut libc::c_double,
@@ -120,7 +183,7 @@ pub type nlopt_func = Option<
     ) -> libc::c_double,
 >;
 pub type nlopt_mfunc = Option<
-    unsafe extern "C" fn(
+    unsafe fn(
         libc::c_uint,
         *mut libc::c_double,
         libc::c_uint,
@@ -130,7 +193,7 @@ pub type nlopt_mfunc = Option<
     ) -> (),
 >;
 pub type nlopt_precond = Option<
-    unsafe extern "C" fn(
+    unsafe fn(
         libc::c_uint,
         *const libc::c_double,
         *const libc::c_double,
@@ -196,7 +259,7 @@ pub struct func_wrap_state {
     pub stop: *mut nlopt_stopping,
 }
 pub const COBYLA_MSG_NONE: C2RustUnnamed = 0;
-pub type cobyla_function = unsafe extern "C" fn(
+pub type cobyla_function = unsafe fn(
     libc::c_int,
     libc::c_int,
     *mut libc::c_double,
@@ -210,7 +273,7 @@ pub const COBYLA_MSG_INFO: C2RustUnnamed = 3;
 pub const COBYLA_MSG_ITER: C2RustUnnamed = 2;
 pub const COBYLA_MSG_EXIT: C2RustUnnamed = 1;
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_time_seed() -> libc::c_ulong {
+pub unsafe fn nlopt_time_seed() -> libc::c_ulong {
     // let mut tv = libc::timeval {
     //     tv_sec: 0,
     //     tv_usec: 0,
@@ -222,7 +285,7 @@ pub unsafe extern "C" fn nlopt_time_seed() -> libc::c_ulong {
     since_the_epoch.as_millis() as libc::c_ulong
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_seconds() -> libc::c_double {
+pub unsafe fn nlopt_seconds() -> libc::c_double {
     // static mut start_inited: libc::c_int = 0 as libc::c_int;
     // static mut start: libc::timeval = libc::timeval {
     //     tv_sec: 0,
@@ -250,14 +313,14 @@ pub unsafe extern "C" fn nlopt_seconds() -> libc::c_double {
         .expect("Time flies")
         .as_secs_f64()
 }
-unsafe extern "C" fn sc(
+unsafe fn sc(
     mut x: libc::c_double,
     mut smin: libc::c_double,
     mut smax: libc::c_double,
 ) -> libc::c_double {
     return smin + x * (smax - smin);
 }
-unsafe extern "C" fn vector_norm(
+unsafe fn vector_norm(
     mut n: libc::c_uint,
     mut vec: *const libc::c_double,
     mut w: *const libc::c_double,
@@ -306,7 +369,7 @@ unsafe extern "C" fn vector_norm(
     }
     return ret;
 }
-unsafe extern "C" fn diff_norm(
+unsafe fn diff_norm(
     mut n: libc::c_uint,
     mut x: *const libc::c_double,
     mut oldx: *const libc::c_double,
@@ -364,7 +427,7 @@ unsafe extern "C" fn diff_norm(
     }
     return ret;
 }
-unsafe extern "C" fn relstop(
+unsafe fn relstop(
     mut vold: libc::c_double,
     mut vnew: libc::c_double,
     mut reltol: libc::c_double,
@@ -378,7 +441,7 @@ unsafe extern "C" fn relstop(
         || reltol > 0 as libc::c_int as libc::c_double && vnew == vold) as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_stop_ftol(
+pub unsafe fn nlopt_stop_ftol(
     mut s: *const nlopt_stopping,
     mut f: libc::c_double,
     mut oldf: libc::c_double,
@@ -386,7 +449,7 @@ pub unsafe extern "C" fn nlopt_stop_ftol(
     return relstop(oldf, f, (*s).ftol_rel, (*s).ftol_abs);
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_stop_f(
+pub unsafe fn nlopt_stop_f(
     mut s: *const nlopt_stopping,
     mut f: libc::c_double,
     mut oldf: libc::c_double,
@@ -394,7 +457,7 @@ pub unsafe extern "C" fn nlopt_stop_f(
     return (f <= (*s).minf_max || nlopt_stop_ftol(s, f, oldf) != 0) as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_stop_x(
+pub unsafe fn nlopt_stop_x(
     mut s: *const nlopt_stopping,
     mut x: *const libc::c_double,
     mut oldx: *const libc::c_double,
@@ -433,7 +496,7 @@ pub unsafe extern "C" fn nlopt_stop_x(
     return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_stop_dx(
+pub unsafe fn nlopt_stop_dx(
     mut s: *const nlopt_stopping,
     mut x: *const libc::c_double,
     mut dx: *const libc::c_double,
@@ -469,7 +532,7 @@ pub unsafe extern "C" fn nlopt_stop_dx(
     return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_stop_xs(
+pub unsafe fn nlopt_stop_xs(
     mut s: *const nlopt_stopping,
     mut xs: *const libc::c_double,
     mut oldxs: *const libc::c_double,
@@ -506,7 +569,7 @@ pub unsafe extern "C" fn nlopt_stop_xs(
     return 1 as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_isinf(mut x: libc::c_double) -> libc::c_int {
+pub unsafe fn nlopt_isinf(mut x: libc::c_double) -> libc::c_int {
     return ((x).abs() >= ::std::f64::INFINITY * 0.99f64
         || if x.is_infinite() {
             if x.is_sign_positive() {
@@ -519,11 +582,11 @@ pub unsafe extern "C" fn nlopt_isinf(mut x: libc::c_double) -> libc::c_int {
         } != 0) as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_isfinite(mut x: libc::c_double) -> libc::c_int {
+pub unsafe fn nlopt_isfinite(mut x: libc::c_double) -> libc::c_int {
     return (x.abs() <= 1.7976931348623157e+308f64) as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_istiny(mut x: libc::c_double) -> libc::c_int {
+pub unsafe fn nlopt_istiny(mut x: libc::c_double) -> libc::c_int {
     if x == 0.0f64 {
         return 1 as libc::c_int;
     } else {
@@ -531,15 +594,15 @@ pub unsafe extern "C" fn nlopt_istiny(mut x: libc::c_double) -> libc::c_int {
     };
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_isnan(mut x: libc::c_double) -> libc::c_int {
+pub unsafe fn nlopt_isnan(mut x: libc::c_double) -> libc::c_int {
     return x.is_nan() as i32;
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_stop_evals(mut s: *const nlopt_stopping) -> libc::c_int {
+pub unsafe fn nlopt_stop_evals(mut s: *const nlopt_stopping) -> libc::c_int {
     return ((*s).maxeval > 0 as libc::c_int && *(*s).nevals_p >= (*s).maxeval) as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_stop_time_(
+pub unsafe fn nlopt_stop_time_(
     mut start: libc::c_double,
     mut maxtime: libc::c_double,
 ) -> libc::c_int {
@@ -547,19 +610,19 @@ pub unsafe extern "C" fn nlopt_stop_time_(
         as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_stop_time(mut s: *const nlopt_stopping) -> libc::c_int {
+pub unsafe fn nlopt_stop_time(mut s: *const nlopt_stopping) -> libc::c_int {
     return nlopt_stop_time_((*s).start, (*s).maxtime);
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_stop_evalstime(mut stop: *const nlopt_stopping) -> libc::c_int {
+pub unsafe fn nlopt_stop_evalstime(mut stop: *const nlopt_stopping) -> libc::c_int {
     return (nlopt_stop_evals(stop) != 0 || nlopt_stop_time(stop) != 0) as libc::c_int;
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_stop_forced(mut stop: *const nlopt_stopping) -> libc::c_int {
+pub unsafe fn nlopt_stop_forced(mut stop: *const nlopt_stopping) -> libc::c_int {
     return (!((*stop).force_stop).is_null() && *(*stop).force_stop != 0) as libc::c_int;
 }
 // #[no_mangle]
-// pub unsafe extern "C" fn nlopt_vsprintf(
+// pub unsafe  fn nlopt_vsprintf(
 //     mut p: *mut libc::c_char,
 //     mut format: *const libc::c_char,
 //     mut ap: ::std::ffi::VaList,
@@ -592,7 +655,7 @@ pub unsafe fn nlopt_stop_msg(mut s: *mut nlopt_stopping, msg: &str) {
     (*s).stop_msg = msg.to_string();
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_count_constraints(
+pub unsafe fn nlopt_count_constraints(
     mut p: libc::c_uint,
     mut c: *const nlopt_constraint,
 ) -> libc::c_uint {
@@ -606,7 +669,7 @@ pub unsafe extern "C" fn nlopt_count_constraints(
     return count;
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_max_constraint_dim(
+pub unsafe fn nlopt_max_constraint_dim(
     mut p: libc::c_uint,
     mut c: *const nlopt_constraint,
 ) -> libc::c_uint {
@@ -621,8 +684,8 @@ pub unsafe extern "C" fn nlopt_max_constraint_dim(
     }
     return max_dim;
 }
-#[no_mangle]
-pub unsafe extern "C" fn nlopt_eval_constraint(
+
+pub unsafe fn nlopt_eval_constraint<U>(
     mut result: *mut libc::c_double,
     mut grad: *mut libc::c_double,
     mut c: *const nlopt_constraint,
@@ -631,13 +694,19 @@ pub unsafe extern "C" fn nlopt_eval_constraint(
 ) {
     if ((*c).f).is_some() {
         *result.offset(0 as libc::c_int as isize) =
-            ((*c).f).expect("non-null function pointer")(n, x, grad, (*c).f_data);
+        // PATCH Weird bug ((*c).f).expect("non-null function pointer") calls the objective function!!!
+        // even if (*c), nlopt_constraint object was correctly built with a nlopt_constraint_raw_callback!!! 
+        //    ((*c).f).expect("non-null function pointer")(n, x, grad, (*c).f_data);
+        // Maybe the U generic parameter required explains it cannot work like with C ???
+        nlopt_constraint_raw_callback::<&dyn NLoptObjFn<U>, U>(n, x, grad, (*c).f_data);
+        // RLA: Take the opposite to manage cstr as being nonnegative in the end like the original cobyla
+        *result.offset(0 as libc::c_int as isize) = -*result.offset(0 as libc::c_int as isize)
     } else {
         ((*c).mf).expect("non-null function pointer")((*c).m, result, n, x, grad, (*c).f_data);
     };
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_compute_rescaling(
+pub unsafe fn nlopt_compute_rescaling(
     mut n: libc::c_uint,
     mut dx: *const libc::c_double,
 ) -> *mut libc::c_double {
@@ -645,7 +714,7 @@ pub unsafe extern "C" fn nlopt_compute_rescaling(
     //     (::std::mem::size_of::<libc::c_double>() as libc::c_ulong).wrapping_mul(n as libc::c_ulong),
     // ) as *mut libc::c_double;
 
-    let mut space: Vec<libc::c_double> = vec![0.; usize::try_from(n).unwrap()];
+    let mut space: Box<Vec<libc::c_double>> = Box::new(vec![0.; usize::try_from(n).unwrap()]);
     let s = space.as_mut_ptr() as *mut libc::c_double;
     std::mem::forget(space);
 
@@ -678,7 +747,7 @@ pub unsafe extern "C" fn nlopt_compute_rescaling(
     return s;
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_rescale(
+pub unsafe fn nlopt_rescale(
     mut n: libc::c_uint,
     mut s: *const libc::c_double,
     mut x: *const libc::c_double,
@@ -700,7 +769,7 @@ pub unsafe extern "C" fn nlopt_rescale(
     };
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_unscale(
+pub unsafe fn nlopt_unscale(
     mut n: libc::c_uint,
     mut s: *const libc::c_double,
     mut x: *const libc::c_double,
@@ -722,7 +791,7 @@ pub unsafe extern "C" fn nlopt_unscale(
     };
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_new_rescaled(
+pub unsafe fn nlopt_new_rescaled(
     mut n: libc::c_uint,
     mut s: *const libc::c_double,
     mut x: *const libc::c_double,
@@ -731,7 +800,7 @@ pub unsafe extern "C" fn nlopt_new_rescaled(
     //     (::std::mem::size_of::<libc::c_double>() as libc::c_ulong).wrapping_mul(n as libc::c_ulong),
     // ) as *mut libc::c_double;
 
-    let mut space: Vec<libc::c_double> = vec![0.; usize::try_from(n).unwrap()];
+    let mut space: Box<Vec<libc::c_double>> = Box::new(vec![0.; usize::try_from(n).unwrap()]);
     let xs = space.as_mut_ptr() as *mut libc::c_double;
     std::mem::forget(space);
 
@@ -742,7 +811,7 @@ pub unsafe extern "C" fn nlopt_new_rescaled(
     return xs;
 }
 #[no_mangle]
-pub unsafe extern "C" fn nlopt_reorder_bounds(
+pub unsafe fn nlopt_reorder_bounds(
     mut n: libc::c_uint,
     mut lb: *mut libc::c_double,
     mut ub: *mut libc::c_double,
@@ -758,7 +827,7 @@ pub unsafe extern "C" fn nlopt_reorder_bounds(
         i = i.wrapping_add(1);
     }
 }
-unsafe extern "C" fn func_wrap(
+unsafe fn func_wrap<U>(
     mut ni: libc::c_int,
     mut _mi: libc::c_int,
     mut x: *mut libc::c_double,
@@ -797,7 +866,7 @@ unsafe extern "C" fn func_wrap(
     i = 0 as libc::c_int as libc::c_uint;
     j = 0 as libc::c_int as libc::c_uint;
     while j < (*s).m_orig {
-        nlopt_eval_constraint(
+        nlopt_eval_constraint::<U>(
             con.offset(i as isize),
             0 as *mut libc::c_double,
             ((*s).fc).offset(j as isize),
@@ -817,7 +886,7 @@ unsafe extern "C" fn func_wrap(
     }
     j = 0 as libc::c_int as libc::c_uint;
     while j < (*s).p {
-        nlopt_eval_constraint(
+        nlopt_eval_constraint::<U>(
             con.offset(i as isize),
             0 as *mut libc::c_double,
             ((*s).h).offset(j as isize),
@@ -856,8 +925,7 @@ unsafe extern "C" fn func_wrap(
     }
     return 0 as libc::c_int;
 }
-#[no_mangle]
-pub unsafe extern "C" fn cobyla_minimize(
+pub unsafe fn cobyla_minimize<U>(
     mut n: libc::c_uint,
     mut f: nlopt_func,
     mut f_data: *mut libc::c_void,
@@ -949,7 +1017,8 @@ pub unsafe extern "C" fn cobyla_minimize(
                         //         .wrapping_mul(n as libc::c_ulong),
                         // ) as *mut libc::c_double;
 
-                        let mut space: Vec<libc::c_double> = vec![0.; usize::try_from(n).unwrap()];
+                        let mut space: Box<Vec<libc::c_double>> =
+                            Box::new(vec![0.; usize::try_from(n).unwrap()]);
                         s.xtmp = space.as_mut_ptr() as *mut libc::c_double;
                         std::mem::forget(space);
 
@@ -992,10 +1061,12 @@ pub unsafe extern "C" fn cobyla_minimize(
                             //         .wrapping_mul(m as libc::c_ulong),
                             // ) as *mut libc::c_double;
 
-                            let mut space: Vec<libc::c_double> =
-                                vec![0.; usize::try_from(m).unwrap()];
-                            s.con_tol = space.as_mut_ptr() as *mut libc::c_double;
-                            std::mem::forget(space);
+                            if m > 0 {
+                                let mut space: Box<Vec<libc::c_double>> =
+                                    Box::new(vec![0.; usize::try_from(m).unwrap()]);
+                                s.con_tol = space.as_mut_ptr() as *mut libc::c_double;
+                                std::mem::forget(space);
+                            }
 
                             if m != 0 && (s.con_tol).is_null() {
                                 ret = NLOPT_OUT_OF_MEMORY;
@@ -1054,8 +1125,8 @@ pub unsafe extern "C" fn cobyla_minimize(
                                     s.ub,
                                     COBYLA_MSG_NONE as libc::c_int,
                                     Some(
-                                        func_wrap
-                                            as unsafe extern "C" fn(
+                                        func_wrap::<U>
+                                            as unsafe fn(
                                                 libc::c_int,
                                                 libc::c_int,
                                                 *mut libc::c_double,
@@ -1091,21 +1162,23 @@ pub unsafe extern "C" fn cobyla_minimize(
     // free(s.lb as *mut libc::c_void);
     // free(s.scale as *mut libc::c_void);
 
-    drop(Rc::from_raw(s.con_tol));
-    drop(Rc::from_raw(s.xtmp));
-    drop(Rc::from_raw(s.ub));
-    drop(Rc::from_raw(s.lb));
-    drop(Rc::from_raw(s.scale));
+    if m > 0 {
+        let _ = Box::from_raw(s.con_tol);
+    }
+    let _ = Box::from_raw(s.xtmp);
+    let _ = Box::from_raw(s.ub);
+    let _ = Box::from_raw(s.lb);
+    let _ = Box::from_raw(s.scale);
 
     return ret;
 }
-unsafe extern "C" fn lcg_rand(mut seed: *mut uint32_t) -> uint32_t {
+unsafe fn lcg_rand(mut seed: *mut uint32_t) -> uint32_t {
     *seed = (*seed)
         .wrapping_mul(1103515245 as libc::c_int as libc::c_uint)
         .wrapping_add(12345 as libc::c_int as libc::c_uint);
     return *seed;
 }
-unsafe extern "C" fn lcg_urand(
+unsafe fn lcg_urand(
     mut seed: *mut uint32_t,
     mut a: libc::c_double,
     mut b: libc::c_double,
@@ -1114,7 +1187,7 @@ unsafe extern "C" fn lcg_urand(
         / -(1 as libc::c_int) as uint32_t as libc::c_double;
 }
 #[no_mangle]
-pub unsafe extern "C" fn cobyla(
+pub unsafe fn cobyla(
     mut n: libc::c_int,
     mut m: libc::c_int,
     mut x: *mut libc::c_double,
@@ -1165,7 +1238,8 @@ pub unsafe extern "C" fn cobyla(
     let space_size = n * (3 as libc::c_int * n + 2 as libc::c_int * m + 11 as libc::c_int)
         + 4 as libc::c_int * m
         + 6 as libc::c_int;
-    let mut space: Vec<libc::c_double> = vec![0.; usize::try_from(space_size).unwrap()];
+    let mut space: Box<Vec<libc::c_double>> =
+        Box::new(vec![0.; usize::try_from(space_size).unwrap()]);
     let mut w = space.as_mut_ptr() as *mut libc::c_double;
     std::mem::forget(space);
 
@@ -1181,7 +1255,8 @@ pub unsafe extern "C" fn cobyla(
     // ) as *mut libc::c_int;
 
     let space_size = m + 1;
-    let mut space: Vec<libc::c_double> = vec![0.; usize::try_from(space_size).unwrap()];
+    let mut space: Box<Vec<libc::c_double>> =
+        Box::new(vec![0.; usize::try_from(space_size).unwrap()]);
     let mut iact = space.as_mut_ptr() as *mut libc::c_int;
     std::mem::forget(space);
 
@@ -1190,7 +1265,7 @@ pub unsafe extern "C" fn cobyla(
             fprintf(Io::stderr, "cobyla: memory allocation error.");
         }
         //free(w as *mut libc::c_void);
-        drop(Rc::from_raw(w));
+        let _ = Box::from_raw(w);
         return NLOPT_OUT_OF_MEMORY;
     }
     iact = iact.offset(-1);
@@ -1239,11 +1314,11 @@ pub unsafe extern "C" fn cobyla(
     w = w.offset(1);
     // free(w as *mut libc::c_void);
     // free(iact as *mut libc::c_void);
-    drop(Rc::from_raw(w));
-    drop(Rc::from_raw(iact));
+    let _ = Box::from_raw(w);
+    let _ = Box::from_raw(iact);
     return rc;
 }
-unsafe extern "C" fn cobylb(
+unsafe fn cobylb(
     mut n: *mut libc::c_int,
     mut m: *mut libc::c_int,
     mut mpp: *mut libc::c_int,
@@ -2290,7 +2365,7 @@ unsafe extern "C" fn cobylb(
     }
     rc
 }
-unsafe extern "C" fn trstlp(
+unsafe fn trstlp(
     mut n: *mut libc::c_int,
     mut m: *mut libc::c_int,
     mut a: *mut libc::c_double,

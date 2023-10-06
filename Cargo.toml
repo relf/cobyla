@@ -1,8 +1,8 @@
 [package]
 authors = ["Remi Lafage <remi.lafage@onera.fr>"]
 name = "cobyla"
-version = "0.3.3"
-edition = "2018"
+version = "0.4.0"
+edition = "2021"
 license-file = "LICENSE.md"
 description = "COBYLA optimizer for Rust"
 readme = "README.md"
