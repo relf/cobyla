@@ -715,7 +715,7 @@ pub unsafe fn nlopt_compute_rescaling(
     //     (::std::mem::size_of::<libc::c_double>() as libc::c_ulong).wrapping_mul(n as libc::c_ulong),
     // ) as *mut libc::c_double;
 
-    let mut space: Vec<libc::c_double> = vec![0.; usize::try_from(n).unwrap()];
+    let mut space: Box<Vec<libc::c_double>> = Box::new(vec![0.; usize::try_from(n).unwrap()]);
     let s = space.as_mut_ptr() as *mut libc::c_double;
     std::mem::forget(space);
 
@@ -801,7 +801,7 @@ pub unsafe fn nlopt_new_rescaled(
     //     (::std::mem::size_of::<libc::c_double>() as libc::c_ulong).wrapping_mul(n as libc::c_ulong),
     // ) as *mut libc::c_double;
 
-    let mut space: Vec<libc::c_double> = vec![0.; usize::try_from(n).unwrap()];
+    let mut space: Box<Vec<libc::c_double>> = Box::new(vec![0.; usize::try_from(n).unwrap()]);
     let xs = space.as_mut_ptr() as *mut libc::c_double;
     std::mem::forget(space);
 
@@ -1018,7 +1018,8 @@ pub unsafe fn cobyla_minimize<U>(
                         //         .wrapping_mul(n as libc::c_ulong),
                         // ) as *mut libc::c_double;
 
-                        let mut space: Vec<libc::c_double> = vec![0.; usize::try_from(n).unwrap()];
+                        let mut space: Box<Vec<libc::c_double>> =
+                            Box::new(vec![0.; usize::try_from(n).unwrap()]);
                         s.xtmp = space.as_mut_ptr() as *mut libc::c_double;
                         std::mem::forget(space);
 
@@ -1062,8 +1063,8 @@ pub unsafe fn cobyla_minimize<U>(
                             // ) as *mut libc::c_double;
 
                             if m > 0 {
-                                let mut space: Vec<libc::c_double> =
-                                    vec![0.; usize::try_from(m).unwrap()];
+                                let mut space: Box<Vec<libc::c_double>> =
+                                    Box::new(vec![0.; usize::try_from(m).unwrap()]);
                                 s.con_tol = space.as_mut_ptr() as *mut libc::c_double;
                                 std::mem::forget(space);
                             }
@@ -1163,12 +1164,12 @@ pub unsafe fn cobyla_minimize<U>(
     // free(s.scale as *mut libc::c_void);
 
     if m > 0 {
-        drop(Rc::from_raw(s.con_tol));
+        let _ = Box::from_raw(s.con_tol);
     }
-    drop(Rc::from_raw(s.xtmp));
-    drop(Rc::from_raw(s.ub));
-    drop(Rc::from_raw(s.lb));
-    drop(Rc::from_raw(s.scale));
+    let _ = Box::from_raw(s.xtmp);
+    let _ = Box::from_raw(s.ub);
+    let _ = Box::from_raw(s.lb);
+    let _ = Box::from_raw(s.scale);
 
     return ret;
 }
@@ -1238,7 +1239,8 @@ pub unsafe fn cobyla(
     let space_size = n * (3 as libc::c_int * n + 2 as libc::c_int * m + 11 as libc::c_int)
         + 4 as libc::c_int * m
         + 6 as libc::c_int;
-    let mut space: Vec<libc::c_double> = vec![0.; usize::try_from(space_size).unwrap()];
+    let mut space: Box<Vec<libc::c_double>> =
+        Box::new(vec![0.; usize::try_from(space_size).unwrap()]);
     let mut w = space.as_mut_ptr() as *mut libc::c_double;
     std::mem::forget(space);
 
@@ -1254,7 +1256,8 @@ pub unsafe fn cobyla(
     // ) as *mut libc::c_int;
 
     let space_size = m + 1;
-    let mut space: Vec<libc::c_double> = vec![0.; usize::try_from(space_size).unwrap()];
+    let mut space: Box<Vec<libc::c_double>> =
+        Box::new(vec![0.; usize::try_from(space_size).unwrap()]);
     let mut iact = space.as_mut_ptr() as *mut libc::c_int;
     std::mem::forget(space);
 

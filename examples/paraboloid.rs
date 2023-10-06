@@ -43,7 +43,17 @@ fn main() {
     let cstr1 = |x: &[f64], _g: Option<&mut [f64]>, _u: &mut ()| x[0];
     cons.push(&cstr1);
 
-    let (status, x_opt) = nlopt_cobyla(nlopt_paraboloid, &mut x, &cons, (), 0.5, 1e-4, 200, 0);
+    let (status, x_opt) = nlopt_cobyla(
+        nlopt_paraboloid,
+        &mut x,
+        &cons,
+        (),
+        0.5,
+        1e-4,
+        200,
+        0,
+        (-10., 10.),
+    );
 
     // For status meaning see cobyla/nlopt/nlopt.h
     println!("status = {}", status);
