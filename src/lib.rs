@@ -14,7 +14,13 @@
 //! The algorithm can be run either using the [`fmin_cobyla`] function or using the [`CobylaSolver`]
 //! which leverages the [argmin](https://www.argmin-rs.org/book/index.html) framework.
 //!
+//! Another COBYLA implementation coming from the [NLopt] project is also available as [`nlopt_cobyla`], this one is not yet
+//! wrapped as an argmin solver.
+//!
 //! Implementation Notes:
+//!
+//! 0.4.x : COBYLA NLopt 2.7.1 implementation is now available as [`nlopt_cobyla`] function. As for the original implementation
+//! fmin_cobyla, it was first generated from C code using c2rust then manually edited to make it work.
 //!
 //! 0.3.x : COBYLA is now also implemented as an argmin::Solver and benefits from [argmin framework](https://github.com/argmin-rs) tooling.
 //!
@@ -228,10 +234,15 @@ pub fn fmin_cobyla<'a, F: ObjFn<U>, G: CstrFn<U>, U>(
     (status, x)
 }
 
-/// Cobyla implementation generated from NLopt 2.7.1: https://github.com/stevengj/nlopt
+/// COBYLA implementation generated from NLopt 2.7.1: https://github.com/stevengj/nlopt
 /// and plugged as what is done in the NLopt rust binding: https://github.com/adwhit/rust-nlopt
 /// but using the same API as fmin_cobyla (which is a bit backward as the NLopt API is richer)
 /// The idea here is to be able to easily to switch between the two implementations.
+///
+/// Compared to [`fmin_cobyla`], this implementation manage x bounds specifically and
+/// garantees the objective function is not called outside.
+///
+/// See [`fmin_cobyla`] for more information.
 #[allow(clippy::useless_conversion)]
 #[allow(clippy::too_many_arguments)]
 pub fn nlopt_cobyla<'a, F: NLoptObjFn<U>, G: NLoptObjFn<U>, U: Clone>(
