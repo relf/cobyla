@@ -29,32 +29,19 @@ use std::slice;
 ///
 /// * `x` - n-dimensional array
 /// * `user_data` - user defined data
-pub trait ObjFn<U>: Fn(&[f64], &mut U) -> f64 {}
-impl<F, U> ObjFn<U> for F where F: Fn(&[f64], &mut U) -> f64 {}
-
-/// A trait for a constraint function which should be positive eventually
-///
-/// A constraint function takes the form of a closure `f(x: &[f64]) -> f64`
-/// The algorithm makes the constraint positive eventually.
-///
-/// For instance if you want an upper bound MAX for x,
-/// you have to define the constraint as `|x| MAX - x`.
-/// Conversly for a lower bound you would define `|x| x - MIN`
-///
-/// * `x` - n-dimensional array
-pub trait CstrFn<U>: Fn(&[f64], &mut U) -> f64 {}
-impl<F, U> CstrFn<U> for F where F: Fn(&[f64], &mut U) -> f64 {}
+pub trait Func<U>: Fn(&[f64], &mut U) -> f64 {}
+impl<F, U> Func<U> for F where F: Fn(&[f64], &mut U) -> f64 {}
 
 /// Packs a function with a user defined parameter set of type `U`
 /// and constraints to be made positive eventually by the optimizer
-struct FunctionCfg<'a, F: ObjFn<U>, G: CstrFn<U>, U> {
+struct FunctionCfg<'a, F: Func<U>, G: Func<U>, U> {
     pub func: F,
     pub cons: &'a [G],
     pub data: U,
 }
 
 /// Callback interface for Cobyla C code to evaluate objective and constraint functions
-fn function_raw_callback<F: ObjFn<U>, G: CstrFn<U>, U>(
+fn function_raw_callback<F: Func<U>, G: Func<U>, U>(
     n: ::std::os::raw::c_long,
     m: ::std::os::raw::c_long,
     x: *const f64,
@@ -153,7 +140,7 @@ fn function_raw_callback<F: ObjFn<U>, G: CstrFn<U>, U>(
 ///
 #[allow(clippy::useless_conversion)]
 #[allow(clippy::too_many_arguments)]
-pub fn fmin_cobyla<'a, F: ObjFn<U>, G: CstrFn<U>, U>(
+pub fn fmin_cobyla<'a, F: Func<U>, G: Func<U>, U>(
     func: F,
     x0: &'a mut [f64],
     cons: &[G],
@@ -385,7 +372,7 @@ mod tests {
         let mut x = vec![1., 1.];
 
         #[allow(bare_trait_objects)]
-        let mut cons: Vec<&dyn CstrFn<()>> = vec![];
+        let mut cons: Vec<&dyn Func<()>> = vec![];
         let cstr1 = |x: &[f64], _u: &mut ()| x[0];
         cons.push(&cstr1);
 
@@ -455,7 +442,7 @@ mod tests {
     fn test_fmin_cobyla2() {
         let mut x = vec![1., 1.];
 
-        let mut cons: Vec<&dyn CstrFn<()>> = vec![];
+        let mut cons: Vec<&dyn Func<()>> = vec![];
         cons.push(&|x: &[f64], _u: &mut ()| x[1] - x[0] * x[0]);
         cons.push(&|x: &[f64], _u: &mut ()| 1. - x[0] * x[0] - x[1] * x[1]);
 

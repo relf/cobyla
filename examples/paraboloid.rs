@@ -1,6 +1,6 @@
 use argmin::core::observers::{ObserverMode, SlogLogger};
 use argmin::core::{CostFunction, Error, Executor};
-use cobyla::{fmin_cobyla, nlopt_cobyla, CobylaSolver, CstrFn, NLoptObjFn};
+use cobyla::{fmin_cobyla, nlopt_cobyla, CobylaSolver, Func, NLoptObjFn};
 
 /// Problem cost function
 fn paraboloid(x: &[f64], _data: &mut ()) -> f64 {
@@ -28,7 +28,7 @@ fn main() {
 
     println!("*** Solve paraboloid problem using Cobyla fmin_cobyla implementation");
     // Constraint definition x0 shoulb be positive in the end
-    let mut cons: Vec<&dyn CstrFn<()>> = vec![];
+    let mut cons: Vec<&dyn Func<()>> = vec![];
     let cstr1 = |x: &[f64], _u: &mut ()| x[0];
     cons.push(&cstr1);
 
