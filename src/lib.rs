@@ -27,7 +27,7 @@ use std::os::raw::c_void;
 /// ```
 /// use cobyla::{minimize, Func};
 ///
-/// fn paraboloid(x: &[f64], _g: Option<&mut [f64]>, _data: &mut ()) -> f64 {
+/// fn paraboloid(x: &[f64], _data: &mut ()) -> f64 {
 ///     10. * (x[0] + 1.).powf(2.) + x[1].powf(2.)
 /// }
 ///
@@ -35,8 +35,8 @@ use std::os::raw::c_void;
 ///
 /// // Constraints definition to be positive eventually
 /// let mut cons: Vec<&dyn Func<()>> = vec![];
-/// cons.push(&|x: &[f64], _g: Option<&mut [f64]>, _data: &mut ()| x[1] - x[0] * x[0]);
-/// cons.push(&|x: &[f64], _g: Option<&mut [f64]>, _data: &mut ()| 1. - x[0] * x[0] - x[1] * x[1]);
+/// cons.push(&|x: &[f64], _data: &mut ()| x[1] - x[0] * x[0]);
+/// cons.push(&|x: &[f64], _data: &mut ()| 1. - x[0] * x[0] - x[1] * x[1]);
 ///
 /// let (status, x_opt) = minimize(paraboloid, &mut x, &cons, (), 0.5, 1e-4, 200, 0, (-10., 10.));
 /// println!("status = {}", status);
@@ -312,7 +312,7 @@ mod tests {
         assert_abs_diff_eq!(x.as_slice(), [-1., 0.].as_slice(), epsilon = 1e-4);
     }
 
-    fn paraboloid(x: &[f64], _g: Option<&mut [f64]>, _data: &mut ()) -> f64 {
+    fn paraboloid(x: &[f64], _data: &mut ()) -> f64 {
         10. * (x[0] + 1.).powf(2.) + x[1].powf(2.)
     }
 
@@ -322,7 +322,7 @@ mod tests {
 
         // #[allow(bare_trait_objects)]
         let mut cons: Vec<&dyn Func<()>> = vec![];
-        let cstr1 = |x: &[f64], _g: Option<&mut [f64]>, _user_data: &mut ()| x[0];
+        let cstr1 = |x: &[f64], _user_data: &mut ()| x[0];
         cons.push(&cstr1 as &dyn Func<()>);
 
         // x_opt = [0, 0]
@@ -334,14 +334,14 @@ mod tests {
         assert_abs_diff_eq!(x.as_slice(), [0., 0.].as_slice(), epsilon = 1e-3);
     }
 
-    fn fletcher9115(x: &[f64], _g: Option<&mut [f64]>, _user_data: &mut ()) -> f64 {
+    fn fletcher9115(x: &[f64], _user_data: &mut ()) -> f64 {
         -x[0] - x[1]
     }
 
-    fn cstr1(x: &[f64], _g: Option<&mut [f64]>, _user_data: &mut ()) -> f64 {
+    fn cstr1(x: &[f64], _user_data: &mut ()) -> f64 {
         x[1] - x[0] * x[0]
     }
-    fn cstr2(x: &[f64], _g: Option<&mut [f64]>, _user_data: &mut ()) -> f64 {
+    fn cstr2(x: &[f64], _user_data: &mut ()) -> f64 {
         1. - x[0] * x[0] - x[1] * x[1]
     }
 

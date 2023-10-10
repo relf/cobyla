@@ -7,10 +7,6 @@ fn paraboloid(x: &[f64], _data: &mut ()) -> f64 {
     10. * (x[0] + 1.).powf(2.) + x[1].powf(2.)
 }
 
-fn nlopt_paraboloid(x: &[f64], _g: Option<&mut [f64]>, _user_data: &mut ()) -> f64 {
-    paraboloid(x, &mut ())
-}
-
 /// Problem Definition: minimize paraboloid(x) subject to x0 >= 0
 struct ParaboloidProblem;
 impl CostFunction for ParaboloidProblem {
@@ -28,11 +24,11 @@ fn main() {
 
     println!("*** Solve paraboloid problem using nlopt_cobyla");
     let mut cons: Vec<&dyn Func<()>> = vec![];
-    let cstr1 = |x: &[f64], _g: Option<&mut [f64]>, _u: &mut ()| x[0];
+    let cstr1 = |x: &[f64], _u: &mut ()| x[0];
     cons.push(&cstr1);
 
     let (status, x_opt) = minimize(
-        nlopt_paraboloid,
+        paraboloid,
         &mut x,
         &cons,
         (),

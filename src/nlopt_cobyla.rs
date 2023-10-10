@@ -27,20 +27,20 @@ use std::slice;
 pub fn nlopt_function_raw_callback<F: Func<T>, T>(
     n: libc::c_uint,
     x: *const f64,
-    g: *mut f64,
+    _g: *mut f64,
     params: *mut libc::c_void,
 ) -> f64 {
     // prepare args
     let argument = unsafe { slice::from_raw_parts(x, n as usize) };
-    let gradient = if g.is_null() {
-        None
-    } else {
-        Some(unsafe { slice::from_raw_parts_mut(g, n as usize) })
-    };
+    // let gradient = if g.is_null() {
+    //     None
+    // } else {
+    //     Some(unsafe { slice::from_raw_parts_mut(g, n as usize) })
+    // };
 
     // recover FunctionCfg object from supplied params and call
     let f = unsafe { &mut *(params as *mut NLoptFunctionCfg<F, T>) };
-    let res = (f.objective_fn)(argument, gradient, &mut f.user_data);
+    let res = (f.objective_fn)(argument, &mut f.user_data);
     #[allow(forgetting_references)]
     std::mem::forget(f);
     res
@@ -49,17 +49,18 @@ pub fn nlopt_function_raw_callback<F: Func<T>, T>(
 pub fn nlopt_constraint_raw_callback<F: Func<T>, T>(
     n: libc::c_uint,
     x: *const f64,
-    g: *mut f64,
+    _g: *mut f64,
     params: *mut libc::c_void,
 ) -> f64 {
     let f = unsafe { &mut *(params as *mut NLoptConstraintCfg<F, T>) };
     let argument = unsafe { slice::from_raw_parts(x, n as usize) };
-    let gradient = if g.is_null() {
-        None
-    } else {
-        Some(unsafe { slice::from_raw_parts_mut(g, n as usize) })
-    };
-    (f.constraint_fn)(argument, gradient, &mut f.user_data)
+    // let gradient = if g.is_null() {
+    //     None
+    // } else {
+    //     Some(unsafe { slice::from_raw_parts_mut(g, n as usize) })
+    // };
+    // (f.constraint_fn)(argument, gradient, &mut f.user_data)
+    (f.constraint_fn)(argument, &mut f.user_data)
 }
 
 /// Packs an objective function with a user defined parameter set of type `T`.
@@ -73,17 +74,14 @@ pub struct NLoptConstraintCfg<F: Func<T>, T> {
     pub user_data: T,
 }
 
-/// A trait representing an objective function.
+/// A trait representing objective and constraints functions.
 ///
-/// An objective function takes the form of a closure `f(x: &[f64], gradient: Option<&mut [f64], user_data: &mut U) -> f64`
+/// An objective function takes the form of a closure `f(x: &[f64], user_data: &mut U) -> f64`
 ///
 /// * `x` - `n`-dimensional array
-/// * `gradient` - `n`-dimensional array to store the gradient `grad f(x)`. If `gradient` matches
-/// `Some(x)`, the user is required to provide a gradient, otherwise the optimization will
-/// probabely fail.
 /// * `user_data` - user defined data
-pub trait Func<U>: Fn(&[f64], Option<&mut [f64]>, &mut U) -> f64 {}
-impl<T, U> Func<U> for T where T: Fn(&[f64], Option<&mut [f64]>, &mut U) -> f64 {}
+pub trait Func<U>: Fn(&[f64], &mut U) -> f64 {}
+impl<T, U> Func<U> for T where T: Fn(&[f64], &mut U) -> f64 {}
 
 enum Io {
     stderr,
@@ -699,7 +697,7 @@ pub unsafe fn nlopt_eval_constraint<U>(
         //    ((*c).f).expect("non-null function pointer")(n, x, grad, (*c).f_data);
         // Maybe the U generic parameter required explains it cannot work like with C ???
         nlopt_constraint_raw_callback::<&dyn Func<U>, U>(n, x, grad, (*c).f_data);
-        // RLA: Take the opposite to manage cstr as being nonnegative in the end like the original cobyla
+        // relf: Take the opposite to manage cstr as being nonnegative in the end like the original cobyla
         *result.offset(0 as libc::c_int as isize) = -*result.offset(0 as libc::c_int as isize)
     } else {
         ((*c).mf).expect("non-null function pointer")((*c).m, result, n, x, grad, (*c).f_data);
