@@ -1,35 +1,5 @@
-//! cobyla
-//!
-//! COBYLA is an algorithm for minimizing a function of many variables. The method is derivatives free (only the function values are needed)
-//! and take into account constraints on the variables. The algorithm is described in:
-//!
-//! > M.J.D. Powell, "A direct search optimization method that models the objective and constraint functions by linear interpolation," in
-//! > Advances in Optimization and Numerical Analysis Mathematics and Its Applications, vol. 275 (eds. Susana Gomez and Jean-Pierre Hennart),
-//! > Kluwer Academic Publishers, pp. 51-67 (1994).
-//!
-//! The objective function to be minimized has to implement the [`ObjFn`] trait, while constraints,
-//! also defined as functions of the input variables have to implement the [`CstrFn`] trait.
-//! Constraints values are intended to be positive at the end of the optimization.
-//!
-//! The algorithm can be run either using the [`fmin_cobyla`] function or using the [`CobylaSolver`]
-//! which leverages the [argmin](https://www.argmin-rs.org/book/index.html) framework.
-//!
-//! Another COBYLA implementation coming from the [NLopt] project is also available as [`nlopt_cobyla`], this one is not yet
-//! wrapped as an argmin solver.
-//!
-//! Implementation Notes:
-//!
-//! 0.4.x : COBYLA NLopt 2.7.1 implementation is now available as [`nlopt_cobyla`] function. As for the original implementation
-//! [`fmin_cobyla`], it was first generated from C code using c2rust then manually edited to make it work.
-//!
-//! 0.3.x : COBYLA is now also implemented as an argmin::Solver and benefits from [argmin framework](https://github.com/argmin-rs) tooling.
-//!
-//! 0.2.x : The C code is now translated in Rust using c2rust transpiler then manually edited to avoid FFI usage
-//! to get Rust (unsafe) implementation.
-//!  
-//! 0.1.x : the C code is wrapped with with bindgen is visible as the `raw_cobyla` function using the callback type
-//! `cobyla_calcfc` which is used to compute the objective function and the constraints.
-//!
+#![doc = include_str!("../README.md")]
+
 mod cobyla;
 use nlopt_cobyla::nlopt_constraint;
 
