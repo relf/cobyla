@@ -24,7 +24,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use std::slice;
 
-pub fn nlopt_function_raw_callback<F: NLoptObjFn<T>, T>(
+pub fn nlopt_function_raw_callback<F: Func<T>, T>(
     n: libc::c_uint,
     x: *const f64,
     g: *mut f64,
@@ -46,7 +46,7 @@ pub fn nlopt_function_raw_callback<F: NLoptObjFn<T>, T>(
     res
 }
 
-pub fn nlopt_constraint_raw_callback<F: NLoptObjFn<T>, T>(
+pub fn nlopt_constraint_raw_callback<F: Func<T>, T>(
     n: libc::c_uint,
     x: *const f64,
     g: *mut f64,
@@ -63,12 +63,12 @@ pub fn nlopt_constraint_raw_callback<F: NLoptObjFn<T>, T>(
 }
 
 /// Packs an objective function with a user defined parameter set of type `T`.
-pub struct NLoptFunctionCfg<F: NLoptObjFn<T>, T> {
+pub struct NLoptFunctionCfg<F: Func<T>, T> {
     pub objective_fn: F,
     pub user_data: T,
 }
 
-pub struct NLoptConstraintCfg<F: NLoptObjFn<T>, T> {
+pub struct NLoptConstraintCfg<F: Func<T>, T> {
     pub constraint_fn: F,
     pub user_data: T,
 }
@@ -82,8 +82,8 @@ pub struct NLoptConstraintCfg<F: NLoptObjFn<T>, T> {
 /// `Some(x)`, the user is required to provide a gradient, otherwise the optimization will
 /// probabely fail.
 /// * `user_data` - user defined data
-pub trait NLoptObjFn<U>: Fn(&[f64], Option<&mut [f64]>, &mut U) -> f64 {}
-impl<T, U> NLoptObjFn<U> for T where T: Fn(&[f64], Option<&mut [f64]>, &mut U) -> f64 {}
+pub trait Func<U>: Fn(&[f64], Option<&mut [f64]>, &mut U) -> f64 {}
+impl<T, U> Func<U> for T where T: Fn(&[f64], Option<&mut [f64]>, &mut U) -> f64 {}
 
 enum Io {
     stderr,
@@ -698,7 +698,7 @@ pub unsafe fn nlopt_eval_constraint<U>(
         // even if (*c), nlopt_constraint object was correctly built with a nlopt_constraint_raw_callback!!! 
         //    ((*c).f).expect("non-null function pointer")(n, x, grad, (*c).f_data);
         // Maybe the U generic parameter required explains it cannot work like with C ???
-        nlopt_constraint_raw_callback::<&dyn NLoptObjFn<U>, U>(n, x, grad, (*c).f_data);
+        nlopt_constraint_raw_callback::<&dyn Func<U>, U>(n, x, grad, (*c).f_data);
         // RLA: Take the opposite to manage cstr as being nonnegative in the end like the original cobyla
         *result.offset(0 as libc::c_int as isize) = -*result.offset(0 as libc::c_int as isize)
     } else {

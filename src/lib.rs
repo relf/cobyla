@@ -3,10 +3,8 @@
 mod cobyla;
 use nlopt_cobyla::nlopt_constraint;
 
-use crate::cobyla::raw_cobyla;
-
 mod nlopt_cobyla;
-pub use crate::nlopt_cobyla::NLoptObjFn;
+pub use crate::nlopt_cobyla::Func;
 use crate::nlopt_cobyla::{
     cobyla_minimize,
     nlopt_constraint_raw_callback, // nlopt_eval_constraint,
@@ -22,71 +20,25 @@ pub use crate::cobyla_solver::*;
 pub use crate::cobyla_state::*;
 
 use std::os::raw::c_void;
-use std::slice;
-/// A trait for an objective function to be minimized
-///
-/// An objective function takes the form of a closure `f(x: &[f64], user_data: &mut U) -> f64`
-///
-/// * `x` - n-dimensional array
-/// * `user_data` - user defined data
-pub trait Func<U>: Fn(&[f64], &mut U) -> f64 {}
-impl<F, U> Func<U> for F where F: Fn(&[f64], &mut U) -> f64 {}
-
-/// Packs a function with a user defined parameter set of type `U`
-/// and constraints to be made positive eventually by the optimizer
-struct FunctionCfg<'a, F: Func<U>, G: Func<U>, U> {
-    pub func: F,
-    pub cons: &'a [G],
-    pub data: U,
-}
-
-/// Callback interface for Cobyla C code to evaluate objective and constraint functions
-fn function_raw_callback<F: Func<U>, G: Func<U>, U>(
-    n: ::std::os::raw::c_long,
-    m: ::std::os::raw::c_long,
-    x: *const f64,
-    con: *mut f64,
-    data: *mut ::std::os::raw::c_void,
-) -> f64 {
-    // prepare args
-    let argument = unsafe { slice::from_raw_parts(x, n as usize) };
-    // recover FunctionCfg object from supplied params and call
-    let f = unsafe { &mut *(data as *mut FunctionCfg<F, G, U>) };
-    let res = (f.func)(argument, &mut f.data);
-
-    for i in 0..m as isize {
-        unsafe {
-            *con.offset(i) = (f.cons[i as usize])(argument, &mut f.data);
-        }
-    }
-
-    // Important: we don't want f to get dropped at this point
-    #[allow(forgetting_references)]
-    std::mem::forget(f);
-    res
-}
 
 /// Minimizes a function using the Constrained Optimization By Linear Approximation (COBYLA) method.
-/// This implementation is a translation of the C code from [here](https://github.com/emmt/Algorithms/tree/master/cobyla)
-///
-/// This interface is modeled after [scypi.optimize.fmin_cobyla](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.fmin_cobyla.html#scipy-optimize-fmin-cobyla)
 ///
 /// # Example
 /// ```
-/// use cobyla::{fmin_cobyla, CstrFn};
+/// use cobyla::{minimize, Func};
 ///
-/// fn paraboloid(x: &[f64], _data: &mut ()) -> f64 {
+/// fn paraboloid(x: &[f64], _g: Option<&mut [f64]>, _data: &mut ()) -> f64 {
 ///     10. * (x[0] + 1.).powf(2.) + x[1].powf(2.)
 /// }
 ///
 /// let mut x = vec![1., 1.];
 ///
 /// // Constraints definition to be positive eventually
-/// let mut cons: Vec<&dyn CstrFn<()>> = vec![];
-/// cons.push(&|x: &[f64], _data: &mut ()| x[1] - x[0] * x[0]);
-/// cons.push(&|x: &[f64], _data: &mut ()| 1. - x[0] * x[0] - x[1] * x[1]);
+/// let mut cons: Vec<&dyn Func<()>> = vec![];
+/// cons.push(&|x: &[f64], _g: Option<&mut [f64]>, _data: &mut ()| x[1] - x[0] * x[0]);
+/// cons.push(&|x: &[f64], _g: Option<&mut [f64]>, _data: &mut ()| 1. - x[0] * x[0] - x[1] * x[1]);
 ///
-/// let (status, x_opt) = fmin_cobyla(paraboloid, &mut x, &cons, (), 0.5, 1e-4, 200, 0);
+/// let (status, x_opt) = minimize(paraboloid, &mut x, &cons, (), 0.5, 1e-4, 200, 0, (-10., 10.));
 /// println!("status = {}", status);
 /// println!("x = {:?}", x_opt);
 /// ```
@@ -138,77 +90,11 @@ fn function_raw_callback<F: Func<U>, G: Func<U>, U>(
 /// printed output the displayed term that is multiplied by SIGMA is
 /// called MAXCV, which stands for 'MAXimum Constraint Violation'.
 ///
-#[allow(clippy::useless_conversion)]
-#[allow(clippy::too_many_arguments)]
-pub fn fmin_cobyla<'a, F: Func<U>, G: Func<U>, U>(
-    func: F,
-    x0: &'a mut [f64],
-    cons: &[G],
-    args: U,
-    rhobeg: f64,
-    rhoend: f64,
-    maxfun: i32,
-    iprint: i32,
-) -> (i32, &'a [f64]) {
-    let n: i32 = x0.len() as i32;
-    let m: i32 = cons.len() as i32;
-
-    // Trick from nlopt-rust: https://github.com/adwhit/rust-nlopt
-    // The strategy is to pass the actual objective function as part of the
-    // parameters to the callback. For this we pack it inside a FunctionCfg struct.
-    // We allocate our FunctionCfg on the heap and pass a pointer to the C lib
-    // (This is pretty unsafe but it works).
-    let fn_cfg = Box::new(FunctionCfg {
-        func,
-        cons,
-        data: args, // move user_data into FunctionCfg
-    });
-    let fn_cfg_ptr = Box::into_raw(fn_cfg) as *mut c_void;
-
-    let x = x0;
-    let mut maxfun = maxfun.into();
-    let mut w = vec![0.; (n * (3 * n + 2 * m + 11) + 4 * m + 6) as usize];
-    let mut iact = vec![0; (m + 1) as usize];
-    let status = unsafe {
-        raw_cobyla(
-            n.into(),
-            m.into(),
-            Some(function_raw_callback::<F, G, U>),
-            fn_cfg_ptr,
-            x.as_mut_ptr(),
-            rhobeg,
-            rhoend,
-            iprint.into(),
-            &mut maxfun,
-            w.as_mut_ptr(),
-            iact.as_mut_ptr(),
-        )
-    };
-    // Convert the raw pointer back into a Box with the Box::from_raw function,
-    // allowing the Box destructor to perform the cleanup.
-    unsafe {
-        let _ = Box::from_raw(fn_cfg_ptr as *mut FunctionCfg<'_, F, G, U>);
-    };
-    (status, x)
-}
-
-/// Minimizes a function using the Constrained Optimization By Linear Approximation (COBYLA) method.
 /// This implementation is a translation of [NLopt](https://github.com/stevengj/nlopt) 2.7.1
-///
-/// The API of the implementation [`nlopt_cobyla`] is modeled after the one of
-/// [`fmin_cobyla`] (which is a bit going backward as the NLopt API is richer)
-/// The idea here is to be able to easily to switch between the two implementations.
-///
-/// Compared to [`fmin_cobyla`], this implementation manages x bounds specifically and
-/// garantees the objective function is not called outside.
-/// Bounds are passed as a couple of double used to initialize lower and upper bounds for
-/// each component of x.  
-///
 /// See [NLopt COBYLA](https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/#cobyla-constrained-optimization-by-linear-approximations) documentation.
-/// See [`fmin_cobyla`] for more information.
 #[allow(clippy::useless_conversion)]
 #[allow(clippy::too_many_arguments)]
-pub fn nlopt_cobyla<'a, F: NLoptObjFn<U>, G: NLoptObjFn<U>, U: Clone>(
+pub fn minimize<'a, F: Func<U>, G: Func<U>, U: Clone>(
     func: F,
     x0: &'a mut [f64],
     cons: &[G],
@@ -230,7 +116,7 @@ pub fn nlopt_cobyla<'a, F: NLoptObjFn<U>, G: NLoptObjFn<U>, U: Clone>(
         .iter()
         .map(|c| {
             let c_cfg = Box::new(NLoptConstraintCfg {
-                constraint_fn: c as &dyn NLoptObjFn<U>,
+                constraint_fn: c as &dyn Func<U>,
                 user_data: args.clone(), // move user_data into FunctionCfg
             });
             let c_cfg_ptr = Box::into_raw(c_cfg) as *mut c_void;
@@ -284,7 +170,7 @@ pub fn nlopt_cobyla<'a, F: NLoptObjFn<U>, G: NLoptObjFn<U>, U: Clone>(
     //         let fc = &nc as *const nlopt_constraint;
 
     //         // It works: cstr1 is called
-    //         let _res = nlopt_constraint_raw_callback::<&dyn NLoptObjFn<()>, ()>(
+    //         let _res = nlopt_constraint_raw_callback::<&dyn Func<()>, ()>(
     //             2,
     //             xtest.as_mut_ptr(),
     //             std::ptr::null_mut::<libc::c_double>(),
@@ -361,158 +247,9 @@ mod tests {
     use crate::nlopt_cobyla::nlopt_stopping;
 
     /////////////////////////////////////////////////////////////////////////
-    // First problem (see cobyla.c case 1)
-
-    fn paraboloid(x: &[f64], _data: &mut ()) -> f64 {
-        10. * (x[0] + 1.).powf(2.) + x[1].powf(2.)
-    }
-
-    #[test]
-    fn test_fmin_cobyla() {
-        let mut x = vec![1., 1.];
-
-        #[allow(bare_trait_objects)]
-        let mut cons: Vec<&dyn Func<()>> = vec![];
-        let cstr1 = |x: &[f64], _u: &mut ()| x[0];
-        cons.push(&cstr1);
-
-        // x_opt = [0, 0]
-        let (status, x_opt) = fmin_cobyla(paraboloid, &mut x, &cons, (), 0.5, 1e-4, 200, 0);
-        println!("status = {}", status);
-        println!("x = {:?}", x_opt);
-
-        assert_abs_diff_eq!(x.as_slice(), [0., 0.].as_slice(), epsilon = 1e-4);
-    }
-
-    /// Direct usage Pb 1
-    ///
-    unsafe fn calcfc(
-        _n: ::std::os::raw::c_long,
-        _m: ::std::os::raw::c_long,
-        x: *const f64,
-        _con: *mut f64,
-        _data: *mut ::std::os::raw::c_void,
-    ) -> f64 {
-        let r1 = *x.offset(0) + 1.0;
-        let r2 = *x.offset(1);
-        10.0 * (r1 * r1) + (r2 * r2)
-    }
-
-    #[test]
-    fn test_cobyla() {
-        let n = 2;
-        let m = 0;
-        let mut x = vec![1.0, 1.0];
-        let rhobeg = 0.5;
-        let rhoend = 1e-4;
-        let iprint = 0;
-        let mut maxfun = 2000;
-        let mut w: Vec<_> = vec![0.; 3000];
-        let mut iact: Vec<_> = vec![0; 51];
-        let null = std::ptr::null_mut::<c_void>();
-
-        // xopt = [-1., 0.]
-        unsafe {
-            raw_cobyla(
-                n,
-                m,
-                Some(calcfc),
-                null,
-                x.as_mut_ptr(),
-                rhobeg,
-                rhoend,
-                iprint,
-                &mut maxfun,
-                w.as_mut_ptr(),
-                iact.as_mut_ptr(),
-            );
-        }
-        assert_abs_diff_eq!(x.as_slice(), [-1., 0.].as_slice(), epsilon = 1e-3);
-    }
-
-    /////////////////////////////////////////////////////////////////////////
     // Second problem (see cobyla.c case 6)
 
-    fn fletcher9115(x: &[f64], _user_data: &mut ()) -> f64 {
-        -x[0] - x[1]
-    }
-
-    #[allow(clippy::vec_init_then_push)]
-    #[test]
-    fn test_fmin_cobyla2() {
-        let mut x = vec![1., 1.];
-
-        let mut cons: Vec<&dyn Func<()>> = vec![];
-        cons.push(&|x: &[f64], _u: &mut ()| x[1] - x[0] * x[0]);
-        cons.push(&|x: &[f64], _u: &mut ()| 1. - x[0] * x[0] - x[1] * x[1]);
-
-        let (status, x_opt) = fmin_cobyla(fletcher9115, &mut x, &cons, (), 0.5, 1e-4, 200, 0);
-        println!("status = {}", status);
-        println!("x = {:?}", x_opt);
-
-        let sqrt_0_5: f64 = 0.5_f64.sqrt();
-        assert_abs_diff_eq!(x_opt, [sqrt_0_5, sqrt_0_5].as_slice(), epsilon = 1e-4);
-    }
-
-    /// Direct usage Pb 6
-    ///
-    unsafe fn calcfc_cstr(
-        _n: ::std::os::raw::c_long,
-        _m: ::std::os::raw::c_long,
-        x: *const f64,
-        con: *mut f64,
-        _data: *mut ::std::os::raw::c_void,
-    ) -> f64 {
-        let r1 = *x.offset(0);
-        let r2 = *x.offset(1);
-        let fc = -r1 - r2;
-        *con.offset(0) = r2 - r1 * r1;
-        *con.offset(1) = 1.0 - r1 * r1 - r2 * r2;
-        fc
-    }
-
-    #[test]
-    fn test_cobyla_cstr() {
-        let n = 2;
-        let m = 2;
-        let mut x = vec![1.0, 1.0];
-        let rhobeg = 0.5;
-        let rhoend = 1e-4;
-        let iprint = 0;
-        let mut maxfun = 2000;
-        let mut w: Vec<_> = vec![0.; 3000];
-        let mut iact: Vec<_> = vec![0; 51];
-        let null = std::ptr::null_mut::<c_void>();
-
-        // xopt = [sqrt(0.5), sqrt(0.5)]
-        unsafe {
-            raw_cobyla(
-                n,
-                m,
-                Some(calcfc_cstr),
-                null,
-                x.as_mut_ptr(),
-                rhobeg,
-                rhoend,
-                iprint,
-                &mut maxfun,
-                w.as_mut_ptr(),
-                iact.as_mut_ptr(),
-            );
-        }
-
-        let sqrt_0_5: f64 = 0.5_f64.sqrt();
-        assert_abs_diff_eq!(
-            x.as_slice(),
-            [sqrt_0_5, sqrt_0_5].as_slice(),
-            epsilon = 1e-4
-        );
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// NlOpt cobyla
-
-    fn nlopt_raw_paraboloid(
+    fn raw_paraboloid(
         _n: libc::c_uint,
         x: *const libc::c_double,
         _gradient: *mut libc::c_double,
@@ -554,7 +291,7 @@ mod tests {
         let res = unsafe {
             cobyla_minimize::<()>(
                 2,
-                Some(nlopt_raw_paraboloid),
+                Some(raw_paraboloid),
                 std::ptr::null_mut(),
                 0,
                 std::ptr::null_mut(),
@@ -575,38 +312,29 @@ mod tests {
         assert_abs_diff_eq!(x.as_slice(), [-1., 0.].as_slice(), epsilon = 1e-4);
     }
 
-    fn nlopt_paraboloid(x: &[f64], _g: Option<&mut [f64]>, _data: &mut ()) -> f64 {
+    fn paraboloid(x: &[f64], _g: Option<&mut [f64]>, _data: &mut ()) -> f64 {
         10. * (x[0] + 1.).powf(2.) + x[1].powf(2.)
     }
 
     #[test]
-    fn test_nlopt_paraboloid() {
+    fn test_paraboloid() {
         let mut x = vec![1., 1.];
 
         // #[allow(bare_trait_objects)]
-        let mut cons: Vec<&dyn NLoptObjFn<()>> = vec![];
+        let mut cons: Vec<&dyn Func<()>> = vec![];
         let cstr1 = |x: &[f64], _g: Option<&mut [f64]>, _user_data: &mut ()| x[0];
-        cons.push(&cstr1 as &dyn NLoptObjFn<()>);
+        cons.push(&cstr1 as &dyn Func<()>);
 
         // x_opt = [0, 0]
-        let (status, x_opt) = nlopt_cobyla(
-            nlopt_paraboloid,
-            &mut x,
-            &cons,
-            (),
-            0.5,
-            0.0,
-            200,
-            1,
-            (-10., 10.),
-        );
+        let (status, x_opt) =
+            minimize(paraboloid, &mut x, &cons, (), 0.5, 0.0, 200, 1, (-10., 10.));
         println!("status = {}", status);
         println!("x = {:?}", x_opt);
 
         assert_abs_diff_eq!(x.as_slice(), [0., 0.].as_slice(), epsilon = 1e-3);
     }
 
-    fn nlopt_fletcher9115(x: &[f64], _g: Option<&mut [f64]>, _user_data: &mut ()) -> f64 {
+    fn fletcher9115(x: &[f64], _g: Option<&mut [f64]>, _user_data: &mut ()) -> f64 {
         -x[0] - x[1]
     }
 
@@ -618,13 +346,13 @@ mod tests {
     }
 
     #[test]
-    fn test_nlopt_fletcher() {
+    fn test_fletcher9115() {
         let mut x = vec![1., 1.];
 
-        let cons = vec![&cstr1 as &dyn NLoptObjFn<()>, &cstr2 as &dyn NLoptObjFn<()>];
+        let cons = vec![&cstr1 as &dyn Func<()>, &cstr2 as &dyn Func<()>];
 
-        let (status, x_opt) = nlopt_cobyla(
-            nlopt_fletcher9115,
+        let (status, x_opt) = minimize(
+            fletcher9115,
             &mut x,
             &cons,
             (),
