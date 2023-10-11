@@ -20,7 +20,7 @@ impl CostFunction for ParaboloidProblem {
 }
 
 fn main() {
-    let mut x = vec![1., 1.];
+    let xinit = vec![1., 1.];
 
     println!("*** Solve paraboloid problem using nlopt_cobyla");
     let mut cons: Vec<&dyn Func<()>> = vec![];
@@ -29,7 +29,7 @@ fn main() {
 
     match minimize(
         paraboloid,
-        &mut x,
+        &xinit,
         &[(-10., 10.), (-10., 10.)],
         &cons,
         (),

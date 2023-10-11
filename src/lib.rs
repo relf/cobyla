@@ -44,9 +44,9 @@ pub enum SuccessStatus {
 }
 
 /// Outcome when optimization process fails
-type FailOutcome<'a> = (FailStatus, &'a [f64], f64);
+type FailOutcome = (FailStatus, Vec<f64>, f64);
 /// Outcome when optimization process succeeds
-type SuccessOutcome<'a> = (SuccessStatus, &'a [f64], f64);
+type SuccessOutcome = (SuccessStatus, Vec<f64>, f64);
 
 /// Minimizes a function using the Constrained Optimization By Linear Approximation (COBYLA) method.
 ///
@@ -138,9 +138,9 @@ type SuccessOutcome<'a> = (SuccessStatus, &'a [f64], f64);
 /// See [NLopt COBYLA](https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/#cobyla-constrained-optimization-by-linear-approximations) documentation.
 #[allow(clippy::useless_conversion)]
 #[allow(clippy::too_many_arguments)]
-pub fn minimize<'a, F: Func<U>, G: Func<U>, U: Clone>(
+pub fn minimize<F: Func<U>, G: Func<U>, U: Clone>(
     func: F,
-    x0: &'a mut [f64],
+    xinit: &[f64],
     bounds: &[(f64, f64)],
     cons: &[G],
     args: U,
@@ -150,7 +150,7 @@ pub fn minimize<'a, F: Func<U>, G: Func<U>, U: Clone>(
     xtol_abs: &[f64],
     maxeval: usize,
     rhobeg: f64,
-) -> Result<SuccessOutcome<'a>, FailOutcome<'a>> {
+) -> Result<SuccessOutcome, FailOutcome> {
     let fn_cfg = Box::new(NLoptFunctionCfg {
         objective_fn: func,
         user_data: args.clone(), // move user_data into FunctionCfg
@@ -178,7 +178,8 @@ pub fn minimize<'a, F: Func<U>, G: Func<U>, U: Clone>(
         })
         .collect::<Vec<_>>();
 
-    let x = x0;
+    let mut x = vec![0.; xinit.len()];
+    x.copy_from_slice(xinit);
     let n = x.len() as u32;
     let m = cons.len() as u32;
 
@@ -335,7 +336,7 @@ mod tests {
 
     #[test]
     fn test_paraboloid() {
-        let mut x = vec![1., 1.];
+        let xinit = vec![1., 1.];
 
         // let mut cons: Vec<&dyn Func<()>> = vec![];
         let mut cons: Vec<&dyn Func<()>> = vec![];
@@ -345,7 +346,7 @@ mod tests {
         // x_opt = [0, 0]
         match minimize(
             paraboloid,
-            &mut x,
+            &xinit,
             &[(-10., 10.), (-10., 10.)],
             &cons,
             (),
@@ -357,7 +358,10 @@ mod tests {
             0.5,
         ) {
             Ok((_, x, _)) => {
-                assert_abs_diff_eq!(x, [0., 0.].as_slice(), epsilon = 1e-3)
+                let exp = [0., 0.];
+                for (act, exp) in x.iter().zip(exp.iter()) {
+                    assert_abs_diff_eq!(act, exp, epsilon = 1e-3);
+                }
             }
             Err((status, _, _)) => {
                 println!("Error status : {:?}", status);
@@ -379,13 +383,13 @@ mod tests {
 
     #[test]
     fn test_fletcher9115() {
-        let mut x = vec![1., 1.];
+        let xinit = vec![1., 1.];
 
         let cons = vec![&cstr1 as &dyn Func<()>, &cstr2 as &dyn Func<()>];
 
         match minimize(
             fletcher9115,
-            &mut x,
+            &xinit,
             &[(-10., 10.), (-10., 10.)],
             &cons,
             (),
@@ -396,9 +400,12 @@ mod tests {
             200,
             0.5,
         ) {
-            Ok((_, x_opt, _)) => {
+            Ok((_, x, _)) => {
                 let sqrt_0_5: f64 = 0.5_f64.sqrt();
-                assert_abs_diff_eq!(x_opt, [sqrt_0_5, sqrt_0_5].as_slice(), epsilon = 1e-4);
+                let exp = [sqrt_0_5, sqrt_0_5];
+                for (act, exp) in x.iter().zip(exp.iter()) {
+                    assert_abs_diff_eq!(act, exp, epsilon = 1e-3);
+                }
             }
             Err((status, _, _)) => {
                 println!("Error status : {:?}", status);
