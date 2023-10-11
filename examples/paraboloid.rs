@@ -30,9 +30,9 @@ fn main() {
     match minimize(
         paraboloid,
         &mut x,
+        &[(-10., 10.), (-10., 10.)],
         &cons,
         (),
-        &[(-10., 10.)],
         0.0,
         1e-4,
         0.0,

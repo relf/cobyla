@@ -65,9 +65,26 @@ type SuccessOutcome<'a> = (SuccessStatus, &'a [f64], f64);
 /// cons.push(&|x: &[f64], _data: &mut ()| x[1] - x[0] * x[0]);
 /// cons.push(&|x: &[f64], _data: &mut ()| 1. - x[0] * x[0] - x[1] * x[1]);
 ///
-/// let (status, x_opt) = minimize(paraboloid, &mut x, &cons, (), 0.5, 1e-4, 200, 0, (-10., 10.));
-/// println!("status = {}", status);
-/// println!("x = {:?}", x_opt);
+/// match minimize(
+///     paraboloid,
+///     &mut x,
+///     &[(-10., 10.), (-10., 10.)],
+///     &cons,
+///     (),
+///     0.0,  
+///     1e-4,
+///     0.0,
+///     &[0.0, 0.0],
+///     200,
+///     0.5,
+/// ) {
+///     Ok((status, x_opt, y_opt)) => {
+///         println!("status = {:?}", status);
+///         println!("x_opt = {:?}", x_opt);
+///         println!("y_opt = {}", y_opt);
+///     }
+///     Err((e, _, _)) => println!("Optim error: {:?}", e),
+/// }
 /// ```
 ///
 /// # Algorithm description:
@@ -124,9 +141,9 @@ type SuccessOutcome<'a> = (SuccessStatus, &'a [f64], f64);
 pub fn minimize<'a, F: Func<U>, G: Func<U>, U: Clone>(
     func: F,
     x0: &'a mut [f64],
+    bounds: &[(f64, f64)],
     cons: &[G],
     args: U,
-    bounds: &[(f64, f64)],
     ftol_rel: f64,
     ftol_abs: f64,
     xtol_rel: f64,
@@ -165,6 +182,16 @@ pub fn minimize<'a, F: Func<U>, G: Func<U>, U: Clone>(
     let n = x.len() as u32;
     let m = cons.len() as u32;
 
+    if bounds.len() != x.len() {
+        panic!(
+            "{}",
+            format!(
+                "Minimize Error: Bounds and x should have same size! Got {} for bounds and {} for x.",
+                bounds.len(),
+                x.len()
+            )
+        )
+    }
     let lbs: Vec<f64> = bounds.iter().map(|b| b.0).collect();
     let ubs: Vec<f64> = bounds.iter().map(|b| b.1).collect();
     let x_weights = vec![0.; n as usize];
@@ -312,16 +339,16 @@ mod tests {
 
         // let mut cons: Vec<&dyn Func<()>> = vec![];
         let mut cons: Vec<&dyn Func<()>> = vec![];
-        let cstr1 = |x: &[f64], _user_data: &mut ()| -x[0];
+        let cstr1 = |x: &[f64], _user_data: &mut ()| x[0];
         cons.push(&cstr1 as &dyn Func<()>);
 
         // x_opt = [0, 0]
         match minimize(
             paraboloid,
             &mut x,
+            &[(-10., 10.), (-10., 10.)],
             &cons,
             (),
-            &[(-10., 10.)],
             0.0,
             0.0,
             0.0,
@@ -359,9 +386,9 @@ mod tests {
         match minimize(
             fletcher9115,
             &mut x,
+            &[(-10., 10.), (-10., 10.)],
             &cons,
             (),
-            &[(-10., 10.)],
             1e-4,
             0.0,
             1e-4,
