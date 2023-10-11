@@ -21,6 +21,33 @@ pub use crate::cobyla_state::*;
 
 use std::os::raw::c_void;
 
+/// Failed termination status of the optimization process
+#[derive(Debug, Clone, Copy)]
+pub enum FailStatus {
+    Failure,
+    InvalidArgs,
+    OutOfMemory,
+    RoundoffLimited,
+    ForcedStop,
+    UnexpectedError,
+}
+
+/// Successful termination status of the optimization process
+#[derive(Debug, Clone, Copy)]
+pub enum SuccessStatus {
+    Success,
+    StopValReached,
+    FtolReached,
+    XtolReached,
+    MaxEvalReached,
+    MaxTimeReached,
+}
+
+/// Outcome when optimization process fails
+type FailOutcome<'a> = (FailStatus, &'a [f64], f64);
+/// Outcome when optimization process succeeds
+type SuccessOutcome<'a> = (SuccessStatus, &'a [f64], f64);
+
 /// Minimizes a function using the Constrained Optimization By Linear Approximation (COBYLA) method.
 ///
 /// # Example
@@ -99,12 +126,14 @@ pub fn minimize<'a, F: Func<U>, G: Func<U>, U: Clone>(
     x0: &'a mut [f64],
     cons: &[G],
     args: U,
+    bounds: &[(f64, f64)],
+    ftol_rel: f64,
+    ftol_abs: f64,
+    xtol_rel: f64,
+    xtol_abs: &[f64],
+    maxeval: usize,
     rhobeg: f64,
-    rhoend: f64,
-    maxfun: i32,
-    _iprint: i32,
-    bounds: (f64, f64),
-) -> (i32, &'a [f64]) {
+) -> Result<SuccessOutcome<'a>, FailOutcome<'a>> {
     let fn_cfg = Box::new(NLoptFunctionCfg {
         objective_fn: func,
         user_data: args.clone(), // move user_data into FunctionCfg
@@ -136,9 +165,8 @@ pub fn minimize<'a, F: Func<U>, G: Func<U>, U: Clone>(
     let n = x.len() as u32;
     let m = cons.len() as u32;
 
-    let lb = vec![bounds.0; n as usize];
-    let ub = vec![bounds.1; n as usize];
-    let xtol_abs = vec![0.; n as usize];
+    let lbs: Vec<f64> = bounds.iter().map(|b| b.0).collect();
+    let ubs: Vec<f64> = bounds.iter().map(|b| b.1).collect();
     let x_weights = vec![0.; n as usize];
     let mut dx = vec![rhobeg; n as usize];
     let mut minf = f64::INFINITY;
@@ -147,70 +175,18 @@ pub fn minimize<'a, F: Func<U>, G: Func<U>, U: Clone>(
     let mut stop = nlopt_stopping {
         n,
         minf_max: -f64::INFINITY,
-        ftol_rel: 1e-4,
-        ftol_abs: 0.0,
-        xtol_rel: rhoend / rhobeg,
+        ftol_rel,
+        ftol_abs,
+        xtol_rel,
         xtol_abs: xtol_abs.as_ptr(),
         x_weights: x_weights.as_ptr(),
         nevals_p: &mut nevals_p,
-        maxeval: maxfun.into(),
+        maxeval: maxeval as i32,
         maxtime: 0.0,
         start: 0.0,
         force_stop: &mut force_stop,
         stop_msg: "".to_string(),
     };
-
-    // XXX: Weird bug. Can not pass nlopt_constraint_raw_callback
-    // Work around is to patch nlopt_eval_constraint to use nlopt_constraint_raw_callback directly
-    // if !cons.is_empty() {
-    //     let mut xtest = vec![1., 1.];
-    //     unsafe {
-    //         let mut result = -666.;
-    //         let nc = cstr_cfg[0];
-    //         let fc = &nc as *const nlopt_constraint;
-
-    //         // It works: cstr1 is called
-    //         let _res = nlopt_constraint_raw_callback::<&dyn Func<()>, ()>(
-    //             2,
-    //             xtest.as_mut_ptr(),
-    //             std::ptr::null_mut::<libc::c_double>(),
-    //             (nc).f_data,
-    //         );
-    //         // println!(
-    //         //     "###################################### JUST direct nlopt_constraint_raw_callback is OK = {}",
-    //         //     res,
-    //         // );
-
-    //         // XXX: Weird bug!
-    //         // If fails : (*fc).f does call nlopt_constraint_raw_callback but
-    //         // when unpacking (*fc).f_data with unsafe f = { &mut *(params as *mut NLoptConstraintCfg<F, T>) };
-    //         // (*f).constraint_fn(...) calls the objective function instead of the constraint function!!!
-    //         let _res = ((*fc).f.expect("func"))(
-    //             2,
-    //             xtest.as_mut_ptr(),
-    //             std::ptr::null_mut::<libc::c_double>(),
-    //             (*fc).f_data,
-    //         );
-    //         // println!(
-    //         //     "###################################### JUST stored nlopt_constraint_raw_callback is NOT OK = {}",
-    //         //     res,
-    //         // );
-
-    //         // It works: cstr1 is called
-    //         // we use directly a copy of specialized nlopt_constraint_raw_callback
-    //         nlopt_eval_constraint::<()>(
-    //             &mut result,
-    //             std::ptr::null_mut::<libc::c_double>(),
-    //             fc,
-    //             n,
-    //             x.as_mut_ptr(),
-    //         );
-    //         // println!(
-    //         //     "############################### TEST nlopt_eval_constraint (OK if opposite previous OK result) = {}",
-    //         //     result
-    //         // );
-    //     }
-    // }
 
     let status = unsafe {
         cobyla_minimize::<U>(
@@ -221,8 +197,8 @@ pub fn minimize<'a, F: Func<U>, G: Func<U>, U: Clone>(
             cstr_cfg.as_mut_ptr(),
             0,
             std::ptr::null_mut(),
-            lb.as_ptr(),
-            ub.as_ptr(),
+            lbs.as_ptr(),
+            ubs.as_ptr(),
             x.as_mut_ptr(),
             &mut minf,
             &mut stop,
@@ -235,7 +211,21 @@ pub fn minimize<'a, F: Func<U>, G: Func<U>, U: Clone>(
     unsafe {
         let _ = Box::from_raw(fn_cfg_ptr as *mut NLoptFunctionCfg<F, U>);
     };
-    (status, x)
+
+    match status {
+        -1 => Err((FailStatus::Failure, x, minf)),
+        -2 => Err((FailStatus::InvalidArgs, x, minf)),
+        -3 => Err((FailStatus::OutOfMemory, x, minf)),
+        -4 => Err((FailStatus::RoundoffLimited, x, minf)),
+        -5 => Err((FailStatus::ForcedStop, x, minf)),
+        1 => Ok((SuccessStatus::Success, x, minf)),
+        2 => Ok((SuccessStatus::StopValReached, x, minf)),
+        3 => Ok((SuccessStatus::FtolReached, x, minf)),
+        4 => Ok((SuccessStatus::XtolReached, x, minf)),
+        5 => Ok((SuccessStatus::MaxEvalReached, x, minf)),
+        6 => Ok((SuccessStatus::MaxTimeReached, x, minf)),
+        _ => Err((FailStatus::UnexpectedError, x, minf)),
+    }
 }
 
 #[cfg(test)]
@@ -263,7 +253,7 @@ mod tests {
     }
 
     #[test]
-    fn test_nlopt_cobyla_minimize() {
+    fn test_cobyla_minimize() {
         let mut x = vec![1., 1.];
         let mut lb = vec![-10.0, -10.0];
         let mut ub = vec![10.0, 10.0];
@@ -320,18 +310,33 @@ mod tests {
     fn test_paraboloid() {
         let mut x = vec![1., 1.];
 
-        // #[allow(bare_trait_objects)]
+        // let mut cons: Vec<&dyn Func<()>> = vec![];
         let mut cons: Vec<&dyn Func<()>> = vec![];
-        let cstr1 = |x: &[f64], _user_data: &mut ()| x[0];
+        let cstr1 = |x: &[f64], _user_data: &mut ()| -x[0];
         cons.push(&cstr1 as &dyn Func<()>);
 
         // x_opt = [0, 0]
-        let (status, x_opt) =
-            minimize(paraboloid, &mut x, &cons, (), 0.5, 0.0, 200, 1, (-10., 10.));
-        println!("status = {}", status);
-        println!("x = {:?}", x_opt);
-
-        assert_abs_diff_eq!(x.as_slice(), [0., 0.].as_slice(), epsilon = 1e-3);
+        match minimize(
+            paraboloid,
+            &mut x,
+            &cons,
+            (),
+            &[(-10., 10.)],
+            0.0,
+            0.0,
+            0.0,
+            &[0.0, 0.0],
+            200,
+            0.5,
+        ) {
+            Ok((_, x, _)) => {
+                assert_abs_diff_eq!(x, [0., 0.].as_slice(), epsilon = 1e-3)
+            }
+            Err((status, _, _)) => {
+                println!("Error status : {:?}", status);
+                panic!("Test fail");
+            }
+        }
     }
 
     fn fletcher9115(x: &[f64], _user_data: &mut ()) -> f64 {
@@ -351,21 +356,27 @@ mod tests {
 
         let cons = vec![&cstr1 as &dyn Func<()>, &cstr2 as &dyn Func<()>];
 
-        let (status, x_opt) = minimize(
+        match minimize(
             fletcher9115,
             &mut x,
             &cons,
             (),
-            0.5,
+            &[(-10., 10.)],
             1e-4,
+            0.0,
+            1e-4,
+            &[0.0, 0.0],
             200,
-            1,
-            (-10., 10.),
-        );
-        println!("status = {}", status);
-        println!("x = {:?}", x_opt);
-
-        let sqrt_0_5: f64 = 0.5_f64.sqrt();
-        assert_abs_diff_eq!(x_opt, [sqrt_0_5, sqrt_0_5].as_slice(), epsilon = 1e-4);
+            0.5,
+        ) {
+            Ok((_, x_opt, _)) => {
+                let sqrt_0_5: f64 = 0.5_f64.sqrt();
+                assert_abs_diff_eq!(x_opt, [sqrt_0_5, sqrt_0_5].as_slice(), epsilon = 1e-4);
+            }
+            Err((status, _, _)) => {
+                println!("Error status : {:?}", status);
+                panic!("Test fail");
+            }
+        }
     }
 }

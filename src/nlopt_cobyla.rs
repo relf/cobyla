@@ -79,7 +79,7 @@ pub struct NLoptConstraintCfg<F: Func<T>, T> {
 /// An objective function takes the form of a closure `f(x: &[f64], user_data: &mut U) -> f64`
 ///
 /// * `x` - `n`-dimensional array
-/// * `user_data` - user defined data
+/// * `user_data` - user defined data for objective and constraint functions
 pub trait Func<U>: Fn(&[f64], &mut U) -> f64 {}
 impl<T, U> Func<U> for T where T: Fn(&[f64], &mut U) -> f64 {}
 

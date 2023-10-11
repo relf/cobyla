@@ -27,21 +27,26 @@ fn main() {
     let cstr1 = |x: &[f64], _u: &mut ()| x[0];
     cons.push(&cstr1);
 
-    let (status, x_opt) = minimize(
+    match minimize(
         paraboloid,
         &mut x,
         &cons,
         (),
-        0.5,
+        &[(-10., 10.)],
+        0.0,
         1e-4,
+        0.0,
+        &[0.0, 0.0],
         200,
-        0,
-        (-10., 10.),
-    );
-
-    // For status meaning see cobyla/nlopt/nlopt.h
-    println!("status = {}", status);
-    println!("x = {:?}\n\n", x_opt);
+        0.5,
+    ) {
+        Ok((status, x_opt, y_opt)) => {
+            println!("status = {:?}", status);
+            println!("x_opt = {:?}", x_opt);
+            println!("y_opt = {}", y_opt);
+        }
+        Err((e, _, _)) => println!("Optim error: {:?}", e),
+    }
 
     println!(
         "*** Solve paraboloid problem using Cobyla argmin solver implemented on top of fmin_cobyla impl"
