@@ -1,6 +1,6 @@
 use argmin::core::observers::{ObserverMode, SlogLogger};
 use argmin::core::{CostFunction, Error, Executor};
-use cobyla::{minimize, CobylaSolver, Func};
+use cobyla::{minimize, CobylaSolver, Func, StopTols};
 
 /// Problem cost function
 fn paraboloid(x: &[f64], _data: &mut ()) -> f64 {
@@ -23,9 +23,17 @@ fn main() {
     let xinit = vec![1., 1.];
 
     println!("*** Solve paraboloid problem using nlopt_cobyla");
+
+    // Define a constraint: x0 > 0
     let mut cons: Vec<&dyn Func<()>> = vec![];
     let cstr1 = |x: &[f64], _u: &mut ()| x[0];
     cons.push(&cstr1);
+
+    // Define a stop criterion on objective function change
+    let stop_tol = StopTols {
+        ftol_rel: 1e-4,
+        ..StopTols::default()
+    };
 
     match minimize(
         paraboloid,
@@ -33,12 +41,9 @@ fn main() {
         &[(-10., 10.), (-10., 10.)],
         &cons,
         (),
-        0.0,
-        1e-4,
-        0.0,
-        &[0.0, 0.0],
         200,
         0.5,
+        Some(stop_tol),
     ) {
         Ok((status, x_opt, y_opt)) => {
             println!("status = {:?}", status);

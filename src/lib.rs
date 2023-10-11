@@ -48,7 +48,49 @@ type FailOutcome = (FailStatus, Vec<f64>, f64);
 /// Outcome when optimization process succeeds
 type SuccessOutcome = (SuccessStatus, Vec<f64>, f64);
 
+/// Tolerances used as termination criteria.
+/// For all, condition is disabled if value is not strictly positive.
+/// ```rust
+/// # use crate::cobyla::StopTols;
+/// let stop_tol = StopTols {
+///     ftol_rel: 1e-4,
+///     xtol_abs: vec![1e-3; 3],   // size should be equal to x dim
+///     ..StopTols::default()      // default stop conditions are disabled
+/// };  
+/// ```
+#[derive(Debug, Clone, Default)]
+pub struct StopTols {
+    /// Relative tolerance on function value, algorithm stops when `func(x)` changes by less than `ftol_rel * func(x)`
+    pub ftol_rel: f64,
+    /// Absolute tolerance on function value, algorithm stops when `func(x)` change is less than `ftol_rel`
+    pub ftol_abs: f64,
+    /// Relative tolerance on optimization parameters, algorithm stops when all `x[i]` changes by less than `xtol_rel * x[i]`
+    pub xtol_rel: f64,
+    /// Relative tolerance on optimization parameters, algorithm stops when `x[i]` changes by less than `xtol_abs[i]`
+    pub xtol_abs: Vec<f64>,
+}
+
 /// Minimizes a function using the Constrained Optimization By Linear Approximation (COBYLA) method.
+///
+/// # Arguments
+///
+/// * `func` - the function to minimize
+/// * `xinit` - n-vector the initial guess
+/// * `cons` - slice of constraint function intended to be negative at the end
+/// * `args` - user data pass to objective and constraint functions
+/// * `bounds` - x domain specified as a n-vector of tuple `(lower bound, upper bound)`  
+/// * `maxeval` - maximum number of objective function evaluation
+/// * `dx`- n-vector of initial change to the x component
+///     
+/// # Returns
+///
+/// The status of the optimization process, the argmin value and the objective function value
+///
+/// # Implementation note:
+///
+/// This implementation is a translation of [NLopt](https://github.com/stevengj/nlopt) 2.7.1
+/// See also [NLopt SLSQP](https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/#slsqp) documentation.
+///
 ///
 /// # Example
 /// ```
@@ -71,12 +113,9 @@ type SuccessOutcome = (SuccessStatus, Vec<f64>, f64);
 ///     &[(-10., 10.), (-10., 10.)],
 ///     &cons,
 ///     (),
-///     0.0,  
-///     1e-4,
-///     0.0,
-///     &[0.0, 0.0],
 ///     200,
 ///     0.5,
+///     None
 /// ) {
 ///     Ok((status, x_opt, y_opt)) => {
 ///         println!("status = {:?}", status);
@@ -134,7 +173,7 @@ type SuccessOutcome = (SuccessStatus, Vec<f64>, f64);
 /// printed output the displayed term that is multiplied by SIGMA is
 /// called MAXCV, which stands for 'MAXimum Constraint Violation'.
 ///
-/// This implementation is a translation of [NLopt](https://github.com/stevengj/nlopt) 2.7.1
+/// This implementation is a translation/adaptation of [NLopt](https://github.com/stevengj/nlopt) 2.7.1
 /// See [NLopt COBYLA](https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/#cobyla-constrained-optimization-by-linear-approximations) documentation.
 #[allow(clippy::useless_conversion)]
 #[allow(clippy::too_many_arguments)]
@@ -144,12 +183,9 @@ pub fn minimize<F: Func<U>, G: Func<U>, U: Clone>(
     bounds: &[(f64, f64)],
     cons: &[G],
     args: U,
-    ftol_rel: f64,
-    ftol_abs: f64,
-    xtol_rel: f64,
-    xtol_abs: &[f64],
     maxeval: usize,
     rhobeg: f64,
+    stop_tol: Option<StopTols>,
 ) -> Result<SuccessOutcome, FailOutcome> {
     let fn_cfg = Box::new(NLoptFunctionCfg {
         objective_fn: func,
@@ -200,13 +236,29 @@ pub fn minimize<F: Func<U>, G: Func<U>, U: Clone>(
     let mut minf = f64::INFINITY;
     let mut nevals_p = 0;
     let mut force_stop = 0;
+
+    let stop_tol = stop_tol.unwrap_or_default();
+    let xtol_abs = if stop_tol.xtol_abs.is_empty() {
+        std::ptr::null()
+    } else if stop_tol.xtol_abs.len() != n as usize {
+        panic!(
+            "{}",
+            format!(
+                "Minimize Error: xtol_abs should have x dim size = {}, got {}",
+                n,
+                stop_tol.xtol_abs.len()
+            )
+        );
+    } else {
+        stop_tol.xtol_abs.as_ptr()
+    };
     let mut stop = nlopt_stopping {
         n,
         minf_max: -f64::INFINITY,
-        ftol_rel,
-        ftol_abs,
-        xtol_rel,
-        xtol_abs: xtol_abs.as_ptr(),
+        ftol_rel: stop_tol.ftol_rel,
+        ftol_abs: stop_tol.ftol_abs,
+        xtol_rel: stop_tol.xtol_rel,
+        xtol_abs,
         x_weights: x_weights.as_ptr(),
         nevals_p: &mut nevals_p,
         maxeval: maxeval as i32,
@@ -350,12 +402,9 @@ mod tests {
             &[(-10., 10.), (-10., 10.)],
             &cons,
             (),
-            0.0,
-            0.0,
-            0.0,
-            &[0.0, 0.0],
             200,
             0.5,
+            None,
         ) {
             Ok((_, x, _)) => {
                 let exp = [0., 0.];
@@ -387,18 +436,21 @@ mod tests {
 
         let cons = vec![&cstr1 as &dyn Func<()>, &cstr2 as &dyn Func<()>];
 
+        let stop_tol = StopTols {
+            ftol_rel: 1e-4,
+            xtol_rel: 1e-4,
+            ..StopTols::default()
+        };
+
         match minimize(
             fletcher9115,
             &xinit,
             &[(-10., 10.), (-10., 10.)],
             &cons,
             (),
-            1e-4,
-            0.0,
-            1e-4,
-            &[0.0, 0.0],
             200,
             0.5,
+            Some(stop_tol),
         ) {
             Ok((_, x, _)) => {
                 let sqrt_0_5: f64 = 0.5_f64.sqrt();
