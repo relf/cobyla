@@ -1,6 +1,6 @@
 use argmin::core::observers::{ObserverMode, SlogLogger};
 use argmin::core::{CostFunction, Error, Executor};
-use cobyla::{minimize, CobylaSolver, Func, StopTols};
+use cobyla::{minimize, CobylaSolver, Func, RhoBeg, StopTols};
 
 /// Problem cost function
 fn paraboloid(x: &[f64], _data: &mut ()) -> f64 {
@@ -42,7 +42,7 @@ fn main() {
         &cons,
         (),
         200,
-        0.5,
+        RhoBeg::All(0.5),
         Some(stop_tol),
     ) {
         Ok((status, x_opt, y_opt)) => {

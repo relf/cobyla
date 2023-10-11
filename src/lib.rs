@@ -70,6 +70,15 @@ pub struct StopTols {
     pub xtol_abs: Vec<f64>,
 }
 
+/// An enum for specifying the initial change of x which correspond to the `rhobeg`
+/// argument of the original Powell's algorithm (hence the name)
+pub enum RhoBeg {
+    /// Used when all x components changes are specified with a single given value
+    All(f64),
+    /// Used to set the components with the given x-dim-sized vector
+    Set(Vec<f64>),
+}
+
 /// Minimizes a function using the Constrained Optimization By Linear Approximation (COBYLA) method.
 ///
 /// # Arguments
@@ -80,7 +89,7 @@ pub struct StopTols {
 /// * `args` - user data pass to objective and constraint functions
 /// * `bounds` - x domain specified as a n-vector of tuple `(lower bound, upper bound)`  
 /// * `maxeval` - maximum number of objective function evaluation
-/// * `dx`- n-vector of initial change to the x component
+/// * `rhobeg`- initial changes to the x component
 ///     
 /// # Returns
 ///
@@ -94,7 +103,7 @@ pub struct StopTols {
 ///
 /// # Example
 /// ```
-/// use cobyla::{minimize, Func};
+/// use cobyla::{minimize, Func, RhoBeg};
 ///
 /// fn paraboloid(x: &[f64], _data: &mut ()) -> f64 {
 ///     10. * (x[0] + 1.).powf(2.) + x[1].powf(2.)
@@ -114,7 +123,7 @@ pub struct StopTols {
 ///     &cons,
 ///     (),
 ///     200,
-///     0.5,
+///     RhoBeg::All(0.5),
 ///     None
 /// ) {
 ///     Ok((status, x_opt, y_opt)) => {
@@ -184,7 +193,7 @@ pub fn minimize<F: Func<U>, G: Func<U>, U: Clone>(
     cons: &[G],
     args: U,
     maxeval: usize,
-    rhobeg: f64,
+    rhobeg: RhoBeg,
     stop_tol: Option<StopTols>,
 ) -> Result<SuccessOutcome, FailOutcome> {
     let fn_cfg = Box::new(NLoptFunctionCfg {
@@ -232,7 +241,23 @@ pub fn minimize<F: Func<U>, G: Func<U>, U: Clone>(
     let lbs: Vec<f64> = bounds.iter().map(|b| b.0).collect();
     let ubs: Vec<f64> = bounds.iter().map(|b| b.1).collect();
     let x_weights = vec![0.; n as usize];
-    let mut dx = vec![rhobeg; n as usize];
+    let mut dx = match rhobeg {
+        RhoBeg::All(val) => vec![val; n as usize],
+        RhoBeg::Set(val) => {
+            if val.len() != n as usize {
+                panic!(
+                    "{}",
+                    format!(
+                        "Minimize Error: xtol_abs should have x dim size ({}), got {}",
+                        n,
+                        val.len()
+                    )
+                )
+            } else {
+                val
+            }
+        }
+    };
     let mut minf = f64::INFINITY;
     let mut nevals_p = 0;
     let mut force_stop = 0;
@@ -244,7 +269,7 @@ pub fn minimize<F: Func<U>, G: Func<U>, U: Clone>(
         panic!(
             "{}",
             format!(
-                "Minimize Error: xtol_abs should have x dim size = {}, got {}",
+                "Minimize Error: xtol_abs should have x dim size ({}), got {}",
                 n,
                 stop_tol.xtol_abs.len()
             )
@@ -403,7 +428,7 @@ mod tests {
             &cons,
             (),
             200,
-            0.5,
+            RhoBeg::All(0.5),
             None,
         ) {
             Ok((_, x, _)) => {
@@ -449,7 +474,7 @@ mod tests {
             &cons,
             (),
             200,
-            0.5,
+            RhoBeg::All(0.5),
             Some(stop_tol),
         ) {
             Ok((_, x, _)) => {
