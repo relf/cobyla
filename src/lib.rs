@@ -5,6 +5,7 @@ use nlopt_cobyla::nlopt_constraint;
 
 mod nlopt_cobyla;
 pub use crate::nlopt_cobyla::Func;
+
 use crate::nlopt_cobyla::{
     cobyla_minimize,
     nlopt_constraint_raw_callback, // nlopt_eval_constraint,
@@ -81,28 +82,32 @@ pub enum RhoBeg {
 
 /// Minimizes a function using the Constrained Optimization By Linear Approximation (COBYLA) method.
 ///
-/// # Arguments
+/// ## Arguments
 ///
 /// * `func` - the function to minimize
 /// * `xinit` - n-vector the initial guess
+/// * `bounds` - x domain specified as a n-vector of tuple `(lower bound, upper bound)`  
 /// * `cons` - slice of constraint function intended to be negative at the end
 /// * `args` - user data pass to objective and constraint functions
-/// * `bounds` - x domain specified as a n-vector of tuple `(lower bound, upper bound)`  
 /// * `maxeval` - maximum number of objective function evaluation
 /// * `rhobeg`- initial changes to the x component
 ///     
-/// # Returns
+/// ## Returns
 ///
 /// The status of the optimization process, the argmin value and the objective function value
 ///
-/// # Implementation note:
+/// ## Panics
+///
+/// When some vector arguments like `bounds`, `xtol_abs` do not have the same size as `xinit`
+///
+/// ## Implementation note:
 ///
 /// This implementation is a translation of [NLopt](https://github.com/stevengj/nlopt) 2.7.1
 /// See also [NLopt SLSQP](https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/#slsqp) documentation.
 ///
-///
-/// # Example
+/// ## Example
 /// ```
+/// # use approx::assert_abs_diff_eq;
 /// use cobyla::{minimize, Func, RhoBeg};
 ///
 /// fn paraboloid(x: &[f64], _data: &mut ()) -> f64 {
@@ -111,10 +116,9 @@ pub enum RhoBeg {
 ///
 /// let mut x = vec![1., 1.];
 ///
-/// // Constraints definition to be positive eventually
-/// let mut cons: Vec<&dyn Func<()>> = vec![];
-/// cons.push(&|x: &[f64], _data: &mut ()| x[1] - x[0] * x[0]);
-/// cons.push(&|x: &[f64], _data: &mut ()| 1. - x[0] * x[0] - x[1] * x[1]);
+/// // Constraints definition to be positive eventually: here `x_0 > 0`
+/// let cstr1 = |x: &[f64], _user_data: &mut ()| x[0];
+/// let cons: Vec<&dyn Func<()>> = vec![&cstr1];
 ///
 /// match minimize(
 ///     paraboloid,
@@ -130,12 +134,13 @@ pub enum RhoBeg {
 ///         println!("status = {:?}", status);
 ///         println!("x_opt = {:?}", x_opt);
 ///         println!("y_opt = {}", y_opt);
+/// #        assert_abs_diff_eq!(y_opt, 10.0);
 ///     }
 ///     Err((e, _, _)) => println!("Optim error: {:?}", e),
 /// }
 /// ```
 ///
-/// # Algorithm description:
+/// ## Algorithm description:
 ///
 /// COBYLA minimizes an objective function F(X) subject to M inequality
 /// constraints on X, where X is a vector of variables that has N components.
@@ -438,8 +443,7 @@ mod tests {
                 }
             }
             Err((status, _, _)) => {
-                println!("Error status : {:?}", status);
-                panic!("Test fail");
+                panic!("{}", format!("Error status : {:?}", status));
             }
         }
     }
