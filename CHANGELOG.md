@@ -5,6 +5,7 @@
 * Remove `fmin_cobyla` implementation as `nlopt_cobyla` now renamed `minimize` based on NLopt implementation is more powerful
 Nevertheless Cobyla argmin solver is still based on initial implementation, not on NLopt one.
 * Remove gradient from `ObjFn` trait which is now renamed `Func`
+* `minimize` API rework to make it more Rusty
 
 ## [0.4.0] - 2023-10-06
 
