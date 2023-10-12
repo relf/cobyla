@@ -1,14 +1,10 @@
 use argmin::core::observers::{ObserverMode, SlogLogger};
 use argmin::core::{CostFunction, Error, Executor};
-use cobyla::{fmin_cobyla, nlopt_cobyla, CobylaSolver, CstrFn, NLoptObjFn};
+use cobyla::{minimize, CobylaSolver, Func, RhoBeg, StopTols};
 
 /// Problem cost function
 fn paraboloid(x: &[f64], _data: &mut ()) -> f64 {
     10. * (x[0] + 1.).powf(2.) + x[1].powf(2.)
-}
-
-fn nlopt_paraboloid(x: &[f64], _g: Option<&mut [f64]>, _user_data: &mut ()) -> f64 {
-    paraboloid(x, &mut ())
 }
 
 /// Problem Definition: minimize paraboloid(x) subject to x0 >= 0
@@ -24,40 +20,39 @@ impl CostFunction for ParaboloidProblem {
 }
 
 fn main() {
-    let mut x = vec![1., 1.];
+    println!("*** Solve paraboloid problem using nlopt_cobyla");
 
-    println!("*** Solve paraboloid problem using Cobyla fmin_cobyla implementation");
-    // Constraint definition x0 shoulb be positive in the end
-    let mut cons: Vec<&dyn CstrFn<()>> = vec![];
+    // Initial guess
+    let xinit = vec![1., 1.];
+
+    // Define a constraint: x0 > 0
+    let mut cons: Vec<&dyn Func<()>> = vec![];
     let cstr1 = |x: &[f64], _u: &mut ()| x[0];
     cons.push(&cstr1);
 
-    let (status, x_opt) = fmin_cobyla(paraboloid, &mut x, &cons, (), 0.5, 1e-4, 200, 0);
+    // Define a stopping criterion on objective function change
+    let stop_tol = StopTols {
+        ftol_rel: 1e-4,
+        ..StopTols::default()
+    };
 
-    // For status meaning see cobyla/cobyla.h
-    println!("status = {}", status);
-    println!("x = {:?}\n\n", x_opt);
-
-    println!("*** Solve paraboloid problem using nlopt_cobyla");
-    let mut cons: Vec<&dyn NLoptObjFn<()>> = vec![];
-    let cstr1 = |x: &[f64], _g: Option<&mut [f64]>, _u: &mut ()| x[0];
-    cons.push(&cstr1);
-
-    let (status, x_opt) = nlopt_cobyla(
-        nlopt_paraboloid,
-        &mut x,
+    match minimize(
+        paraboloid,
+        &xinit,
+        &[(-10., 10.), (-10., 10.)],
         &cons,
         (),
-        0.5,
-        1e-4,
         200,
-        0,
-        (-10., 10.),
-    );
-
-    // For status meaning see cobyla/nlopt/nlopt.h
-    println!("status = {}", status);
-    println!("x = {:?}\n\n", x_opt);
+        RhoBeg::All(0.5),
+        Some(stop_tol),
+    ) {
+        Ok((status, x_opt, y_opt)) => {
+            println!("status = {:?}", status);
+            println!("x_opt = {:?}", x_opt);
+            println!("y_opt = {}", y_opt);
+        }
+        Err((e, _, _)) => println!("Optim error: {:?}", e),
+    }
 
     println!(
         "*** Solve paraboloid problem using Cobyla argmin solver implemented on top of fmin_cobyla impl"
