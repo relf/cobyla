@@ -13,7 +13,7 @@ and take into account constraints on the variables. The algorithm is described i
 
 The algorithm comes into two flavours :
 * As an [argmin solver](), the Rust code was generated from the C code from [here](https://github.com/emmt/Algorithms/tree/master/cobyla) 
-* As a function `minimize`, the Rust code was generated from the C code the [NLopt](https://github.com/stevengj/nlopt) project (version 2.7.1)  
+* As a function `minimize`, the Rust code was generated from the C code of the [NLopt](https://github.com/stevengj/nlopt) project (version 2.7.1)  
 
 In both cases, an initial transpilation was done with [c2rust](https://github.com/immunant/c2rust) then the code was manually edited to make it work. 
 The callback mechanismn is inspired from the Rust binding of NLopt, namely [rust-nlopt](https://github.com/adwhit/rust-nlopt)
