@@ -24,7 +24,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use std::slice;
 
-pub fn nlopt_function_raw_callback<F: Func<T>, T>(
+pub(crate) fn nlopt_function_raw_callback<F: Func<T>, T>(
     n: libc::c_uint,
     x: *const f64,
     _g: *mut f64,
@@ -46,7 +46,7 @@ pub fn nlopt_function_raw_callback<F: Func<T>, T>(
     res
 }
 
-pub fn nlopt_constraint_raw_callback<F: Func<T>, T>(
+pub(crate) fn nlopt_constraint_raw_callback<F: Func<T>, T>(
     n: libc::c_uint,
     x: *const f64,
     _g: *mut f64,
@@ -64,12 +64,12 @@ pub fn nlopt_constraint_raw_callback<F: Func<T>, T>(
 }
 
 /// Packs an objective function with a user defined parameter set of type `T`.
-pub struct NLoptFunctionCfg<F: Func<T>, T> {
+pub(crate) struct NLoptFunctionCfg<F: Func<T>, T> {
     pub objective_fn: F,
     pub user_data: T,
 }
 
-pub struct NLoptConstraintCfg<F: Func<T>, T> {
+pub(crate) struct NLoptConstraintCfg<F: Func<T>, T> {
     pub constraint_fn: F,
     pub user_data: T,
 }
@@ -114,28 +114,28 @@ fn fprintf(_io: Io, msg: &str) {
 //     fn gettimeofday(__tv: *mut timeval, __tz: *mut libc::c_void) -> libc::c_int;
 //     fn strlen(_: *const libc::c_char) -> libc::c_ulong;
 // }
-pub type __builtin_va_list = [__va_list_tag; 1];
+type __builtin_va_list = [__va_list_tag; 1];
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct __va_list_tag {
+struct __va_list_tag {
     pub gp_offset: libc::c_uint,
     pub fp_offset: libc::c_uint,
     pub overflow_arg_area: *mut libc::c_void,
     pub reg_save_area: *mut libc::c_void,
 }
-pub type size_t = libc::c_ulong;
-pub type __uint32_t = libc::c_uint;
-pub type __off_t = libc::c_long;
-pub type __off64_t = libc::c_long;
-pub type __time_t = libc::c_long;
-pub type __suseconds_t = libc::c_long;
+type size_t = libc::c_ulong;
+type __uint32_t = libc::c_uint;
+type __off_t = libc::c_long;
+type __off64_t = libc::c_long;
+type __time_t = libc::c_long;
+type __suseconds_t = libc::c_long;
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct timeval {
+struct timeval {
     pub tv_sec: __time_t,
     pub tv_usec: __suseconds_t,
 }
-pub type va_list = __builtin_va_list;
+type va_list = __builtin_va_list;
 // #[derive(Copy, Clone)]
 // #[repr(C)]
 // pub struct _IO_FILE {
@@ -172,7 +172,7 @@ pub type va_list = __builtin_va_list;
 // pub type _IO_lock_t = ();
 // pub type FILE = _IO_FILE;
 
-pub type nlopt_func = Option<
+type nlopt_func = Option<
     fn(
         libc::c_uint,
         *const libc::c_double,
@@ -180,7 +180,7 @@ pub type nlopt_func = Option<
         *mut libc::c_void,
     ) -> libc::c_double,
 >;
-pub type nlopt_mfunc = Option<
+type nlopt_mfunc = Option<
     unsafe fn(
         libc::c_uint,
         *mut libc::c_double,
@@ -190,7 +190,7 @@ pub type nlopt_mfunc = Option<
         *mut libc::c_void,
     ) -> (),
 >;
-pub type nlopt_precond = Option<
+type nlopt_precond = Option<
     unsafe fn(
         libc::c_uint,
         *const libc::c_double,
@@ -199,23 +199,23 @@ pub type nlopt_precond = Option<
         *mut libc::c_void,
     ) -> (),
 >;
-pub type nlopt_result = libc::c_int;
-pub const NLOPT_NUM_RESULTS: nlopt_result = 7;
-pub const NLOPT_MAXTIME_REACHED: nlopt_result = 6;
-pub const NLOPT_MAXEVAL_REACHED: nlopt_result = 5;
-pub const NLOPT_XTOL_REACHED: nlopt_result = 4;
-pub const NLOPT_FTOL_REACHED: nlopt_result = 3;
-pub const NLOPT_STOPVAL_REACHED: nlopt_result = 2;
-pub const NLOPT_SUCCESS: nlopt_result = 1;
-pub const NLOPT_NUM_FAILURES: nlopt_result = -6;
-pub const NLOPT_FORCED_STOP: nlopt_result = -5;
-pub const NLOPT_ROUNDOFF_LIMITED: nlopt_result = -4;
-pub const NLOPT_OUT_OF_MEMORY: nlopt_result = -3;
-pub const NLOPT_INVALID_ARGS: nlopt_result = -2;
-pub const NLOPT_FAILURE: nlopt_result = -1;
+type nlopt_result = libc::c_int;
+const NLOPT_NUM_RESULTS: nlopt_result = 7;
+const NLOPT_MAXTIME_REACHED: nlopt_result = 6;
+const NLOPT_MAXEVAL_REACHED: nlopt_result = 5;
+const NLOPT_XTOL_REACHED: nlopt_result = 4;
+const NLOPT_FTOL_REACHED: nlopt_result = 3;
+const NLOPT_STOPVAL_REACHED: nlopt_result = 2;
+const NLOPT_SUCCESS: nlopt_result = 1;
+const NLOPT_NUM_FAILURES: nlopt_result = -6;
+const NLOPT_FORCED_STOP: nlopt_result = -5;
+const NLOPT_ROUNDOFF_LIMITED: nlopt_result = -4;
+const NLOPT_OUT_OF_MEMORY: nlopt_result = -3;
+const NLOPT_INVALID_ARGS: nlopt_result = -2;
+const NLOPT_FAILURE: nlopt_result = -1;
 #[derive(Clone)]
 #[repr(C)]
-pub struct nlopt_stopping {
+pub(crate) struct nlopt_stopping {
     pub n: libc::c_uint,
     pub minf_max: libc::c_double,
     pub ftol_rel: libc::c_double,
@@ -232,7 +232,7 @@ pub struct nlopt_stopping {
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct nlopt_constraint {
+pub(crate) struct nlopt_constraint {
     pub m: libc::c_uint,
     pub f: nlopt_func,
     pub mf: nlopt_mfunc,
@@ -242,7 +242,7 @@ pub struct nlopt_constraint {
 }
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct func_wrap_state {
+struct func_wrap_state {
     pub f: nlopt_func,
     pub f_data: *mut libc::c_void,
     pub m_orig: libc::c_uint,
@@ -256,8 +256,8 @@ pub struct func_wrap_state {
     pub scale: *mut libc::c_double,
     pub stop: *mut nlopt_stopping,
 }
-pub const COBYLA_MSG_NONE: C2RustUnnamed = 0;
-pub type cobyla_function = unsafe fn(
+const COBYLA_MSG_NONE: C2RustUnnamed = 0;
+type cobyla_function = unsafe fn(
     libc::c_int,
     libc::c_int,
     *mut libc::c_double,
@@ -265,13 +265,13 @@ pub type cobyla_function = unsafe fn(
     *mut libc::c_double,
     *mut func_wrap_state,
 ) -> libc::c_int;
-pub type uint32_t = __uint32_t;
-pub type C2RustUnnamed = libc::c_uint;
-pub const COBYLA_MSG_INFO: C2RustUnnamed = 3;
-pub const COBYLA_MSG_ITER: C2RustUnnamed = 2;
-pub const COBYLA_MSG_EXIT: C2RustUnnamed = 1;
-#[no_mangle]
-pub unsafe fn nlopt_time_seed() -> libc::c_ulong {
+type uint32_t = __uint32_t;
+type C2RustUnnamed = libc::c_uint;
+const COBYLA_MSG_INFO: C2RustUnnamed = 3;
+const COBYLA_MSG_ITER: C2RustUnnamed = 2;
+const COBYLA_MSG_EXIT: C2RustUnnamed = 1;
+
+unsafe fn nlopt_time_seed() -> libc::c_ulong {
     // let mut tv = libc::timeval {
     //     tv_sec: 0,
     //     tv_usec: 0,
@@ -282,8 +282,8 @@ pub unsafe fn nlopt_time_seed() -> libc::c_ulong {
     let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Time flies");
     since_the_epoch.as_millis() as libc::c_ulong
 }
-#[no_mangle]
-pub unsafe fn nlopt_seconds() -> libc::c_double {
+
+unsafe fn nlopt_seconds() -> libc::c_double {
     // static mut start_inited: libc::c_int = 0 as libc::c_int;
     // static mut start: libc::timeval = libc::timeval {
     //     tv_sec: 0,
@@ -438,24 +438,24 @@ unsafe fn relstop(
         || (vnew - vold).abs() < reltol * ((vnew).abs() + (vold)).abs() * 0.5f64
         || reltol > 0 as libc::c_int as libc::c_double && vnew == vold) as libc::c_int;
 }
-#[no_mangle]
-pub unsafe fn nlopt_stop_ftol(
+
+unsafe fn nlopt_stop_ftol(
     mut s: *const nlopt_stopping,
     mut f: libc::c_double,
     mut oldf: libc::c_double,
 ) -> libc::c_int {
     return relstop(oldf, f, (*s).ftol_rel, (*s).ftol_abs);
 }
-#[no_mangle]
-pub unsafe fn nlopt_stop_f(
+
+unsafe fn nlopt_stop_f(
     mut s: *const nlopt_stopping,
     mut f: libc::c_double,
     mut oldf: libc::c_double,
 ) -> libc::c_int {
     return (f <= (*s).minf_max || nlopt_stop_ftol(s, f, oldf) != 0) as libc::c_int;
 }
-#[no_mangle]
-pub unsafe fn nlopt_stop_x(
+
+unsafe fn nlopt_stop_x(
     mut s: *const nlopt_stopping,
     mut x: *const libc::c_double,
     mut oldx: *const libc::c_double,
@@ -493,8 +493,8 @@ pub unsafe fn nlopt_stop_x(
     }
     return 1 as libc::c_int;
 }
-#[no_mangle]
-pub unsafe fn nlopt_stop_dx(
+
+unsafe fn nlopt_stop_dx(
     mut s: *const nlopt_stopping,
     mut x: *const libc::c_double,
     mut dx: *const libc::c_double,
@@ -529,8 +529,8 @@ pub unsafe fn nlopt_stop_dx(
     }
     return 1 as libc::c_int;
 }
-#[no_mangle]
-pub unsafe fn nlopt_stop_xs(
+
+unsafe fn nlopt_stop_xs(
     mut s: *const nlopt_stopping,
     mut xs: *const libc::c_double,
     mut oldxs: *const libc::c_double,
@@ -566,8 +566,8 @@ pub unsafe fn nlopt_stop_xs(
     }
     return 1 as libc::c_int;
 }
-#[no_mangle]
-pub unsafe fn nlopt_isinf(mut x: libc::c_double) -> libc::c_int {
+
+unsafe fn nlopt_isinf(mut x: libc::c_double) -> libc::c_int {
     return ((x).abs() >= ::std::f64::INFINITY * 0.99f64
         || if x.is_infinite() {
             if x.is_sign_positive() {
@@ -579,47 +579,44 @@ pub unsafe fn nlopt_isinf(mut x: libc::c_double) -> libc::c_int {
             0
         } != 0) as libc::c_int;
 }
-#[no_mangle]
-pub unsafe fn nlopt_isfinite(mut x: libc::c_double) -> libc::c_int {
+
+unsafe fn nlopt_isfinite(mut x: libc::c_double) -> libc::c_int {
     return (x.abs() <= 1.7976931348623157e+308f64) as libc::c_int;
 }
-#[no_mangle]
-pub unsafe fn nlopt_istiny(mut x: libc::c_double) -> libc::c_int {
+
+unsafe fn nlopt_istiny(mut x: libc::c_double) -> libc::c_int {
     if x == 0.0f64 {
         return 1 as libc::c_int;
     } else {
         return (x.abs() < 2.2250738585072014e-308f64) as libc::c_int;
     };
 }
-#[no_mangle]
-pub unsafe fn nlopt_isnan(mut x: libc::c_double) -> libc::c_int {
+
+unsafe fn nlopt_isnan(mut x: libc::c_double) -> libc::c_int {
     return x.is_nan() as i32;
 }
-#[no_mangle]
-pub unsafe fn nlopt_stop_evals(mut s: *const nlopt_stopping) -> libc::c_int {
+
+unsafe fn nlopt_stop_evals(mut s: *const nlopt_stopping) -> libc::c_int {
     return ((*s).maxeval > 0 as libc::c_int && *(*s).nevals_p >= (*s).maxeval) as libc::c_int;
 }
-#[no_mangle]
-pub unsafe fn nlopt_stop_time_(
-    mut start: libc::c_double,
-    mut maxtime: libc::c_double,
-) -> libc::c_int {
+
+unsafe fn nlopt_stop_time_(mut start: libc::c_double, mut maxtime: libc::c_double) -> libc::c_int {
     return (maxtime > 0 as libc::c_int as libc::c_double && nlopt_seconds() - start >= maxtime)
         as libc::c_int;
 }
-#[no_mangle]
-pub unsafe fn nlopt_stop_time(mut s: *const nlopt_stopping) -> libc::c_int {
+
+unsafe fn nlopt_stop_time(mut s: *const nlopt_stopping) -> libc::c_int {
     return nlopt_stop_time_((*s).start, (*s).maxtime);
 }
-#[no_mangle]
-pub unsafe fn nlopt_stop_evalstime(mut stop: *const nlopt_stopping) -> libc::c_int {
+
+unsafe fn nlopt_stop_evalstime(mut stop: *const nlopt_stopping) -> libc::c_int {
     return (nlopt_stop_evals(stop) != 0 || nlopt_stop_time(stop) != 0) as libc::c_int;
 }
-#[no_mangle]
-pub unsafe fn nlopt_stop_forced(mut stop: *const nlopt_stopping) -> libc::c_int {
+
+unsafe fn nlopt_stop_forced(mut stop: *const nlopt_stopping) -> libc::c_int {
     return (!((*stop).force_stop).is_null() && *(*stop).force_stop != 0) as libc::c_int;
 }
-// #[no_mangle]
+//
 // pub unsafe  fn nlopt_vsprintf(
 //     mut p: *mut libc::c_char,
 //     mut format: *const libc::c_char,
@@ -648,12 +645,12 @@ pub unsafe fn nlopt_stop_forced(mut stop: *const nlopt_stopping) -> libc::c_int 
 //     }
 //     return p;
 // }
-#[no_mangle]
-pub unsafe fn nlopt_stop_msg(mut s: *mut nlopt_stopping, msg: &str) {
+
+unsafe fn nlopt_stop_msg(mut s: *mut nlopt_stopping, msg: &str) {
     (*s).stop_msg = msg.to_string();
 }
-#[no_mangle]
-pub unsafe fn nlopt_count_constraints(
+
+unsafe fn nlopt_count_constraints(
     mut p: libc::c_uint,
     mut c: *const nlopt_constraint,
 ) -> libc::c_uint {
@@ -666,8 +663,8 @@ pub unsafe fn nlopt_count_constraints(
     }
     return count;
 }
-#[no_mangle]
-pub unsafe fn nlopt_max_constraint_dim(
+
+unsafe fn nlopt_max_constraint_dim(
     mut p: libc::c_uint,
     mut c: *const nlopt_constraint,
 ) -> libc::c_uint {
@@ -683,7 +680,7 @@ pub unsafe fn nlopt_max_constraint_dim(
     return max_dim;
 }
 
-pub unsafe fn nlopt_eval_constraint<U>(
+unsafe fn nlopt_eval_constraint<U>(
     mut result: *mut libc::c_double,
     mut grad: *mut libc::c_double,
     mut c: *const nlopt_constraint,
@@ -703,8 +700,8 @@ pub unsafe fn nlopt_eval_constraint<U>(
         ((*c).mf).expect("non-null function pointer")((*c).m, result, n, x, grad, (*c).f_data);
     };
 }
-#[no_mangle]
-pub unsafe fn nlopt_compute_rescaling(
+
+unsafe fn nlopt_compute_rescaling(
     mut n: libc::c_uint,
     mut dx: *const libc::c_double,
 ) -> *mut libc::c_double {
@@ -744,8 +741,8 @@ pub unsafe fn nlopt_compute_rescaling(
     }
     return s;
 }
-#[no_mangle]
-pub unsafe fn nlopt_rescale(
+
+unsafe fn nlopt_rescale(
     mut n: libc::c_uint,
     mut s: *const libc::c_double,
     mut x: *const libc::c_double,
@@ -766,8 +763,8 @@ pub unsafe fn nlopt_rescale(
         }
     };
 }
-#[no_mangle]
-pub unsafe fn nlopt_unscale(
+
+unsafe fn nlopt_unscale(
     mut n: libc::c_uint,
     mut s: *const libc::c_double,
     mut x: *const libc::c_double,
@@ -788,8 +785,8 @@ pub unsafe fn nlopt_unscale(
         }
     };
 }
-#[no_mangle]
-pub unsafe fn nlopt_new_rescaled(
+
+unsafe fn nlopt_new_rescaled(
     mut n: libc::c_uint,
     mut s: *const libc::c_double,
     mut x: *const libc::c_double,
@@ -808,8 +805,8 @@ pub unsafe fn nlopt_new_rescaled(
     nlopt_rescale(n, s, x, xs);
     return xs;
 }
-#[no_mangle]
-pub unsafe fn nlopt_reorder_bounds(
+
+unsafe fn nlopt_reorder_bounds(
     mut n: libc::c_uint,
     mut lb: *mut libc::c_double,
     mut ub: *mut libc::c_double,
@@ -923,7 +920,7 @@ unsafe fn func_wrap<U>(
     }
     return 0 as libc::c_int;
 }
-pub unsafe fn cobyla_minimize<U>(
+pub(crate) unsafe fn cobyla_minimize<U>(
     mut n: libc::c_uint,
     mut f: nlopt_func,
     mut f_data: *mut libc::c_void,
@@ -1184,8 +1181,8 @@ unsafe fn lcg_urand(
     return a + lcg_rand(seed) as libc::c_double * (b - a)
         / -(1 as libc::c_int) as uint32_t as libc::c_double;
 }
-#[no_mangle]
-pub unsafe fn cobyla(
+
+unsafe fn cobyla(
     mut n: libc::c_int,
     mut m: libc::c_int,
     mut x: *mut libc::c_double,

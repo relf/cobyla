@@ -20,7 +20,7 @@
 use std::convert::TryFrom;
 
 #[repr(C)]
-pub enum CobylaStatus {
+pub(crate) enum CobylaStatus {
     COBYLA_INITIAL_ITERATE = 2,
     COBYLA_ITERATE = 1,
     COBYLA_SUCCESS = 0,
@@ -44,9 +44,9 @@ pub enum CobylaStatus {
 //     // static mut stderr: *mut FILE;
 //     // fn fprintf(_: *mut FILE, _: *const libc::c_char, _: ...) -> libc::c_int;
 // }
-pub type size_t = libc::c_ulong;
-pub type __off_t = libc::c_long;
-pub type __off64_t = libc::c_long;
+pub(crate) type size_t = libc::c_ulong;
+pub(crate) type __off_t = libc::c_long;
+pub(crate) type __off64_t = libc::c_long;
 // #[derive(Copy, Clone)]
 // #[repr(C)]
 // pub struct _IO_FILE {
@@ -82,7 +82,7 @@ pub type __off64_t = libc::c_long;
 // }
 // pub type _IO_lock_t = ();
 // pub type FILE = _IO_FILE;
-pub type cobyla_calcfc = unsafe fn(
+pub(crate) type cobyla_calcfc = unsafe fn(
     libc::c_long,
     libc::c_long,
     *const libc::c_double,
@@ -162,7 +162,7 @@ impl Default for cobyla_context_t {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub unsafe fn raw_cobyla(
+pub(crate) unsafe fn raw_cobyla(
     mut n: libc::c_long,
     mut m: libc::c_long,
     mut calcfc: Option<cobyla_calcfc>,
@@ -209,8 +209,8 @@ pub unsafe fn raw_cobyla(
         iact,
     );
 }
-#[no_mangle]
-pub unsafe fn cobyla_create(
+
+pub(crate) unsafe fn cobyla_create(
     mut n: libc::c_long,
     mut m: libc::c_long,
     mut rhobeg: libc::c_double,
@@ -305,14 +305,14 @@ pub unsafe fn cobyla_create(
     *fresh10 = ((*ctx).dx).offset(n as isize);
     return ctx;
 }
-#[no_mangle]
-pub unsafe fn cobyla_delete(mut ctx: *mut cobyla_context_t) {
+
+pub(crate) unsafe fn cobyla_delete(mut ctx: *mut cobyla_context_t) {
     if !ctx.is_null() {
         let _ = Box::from_raw(ctx);
     }
 }
-#[no_mangle]
-pub unsafe fn cobyla_restart(mut ctx: *mut cobyla_context_t) -> libc::c_int {
+
+pub(crate) unsafe fn cobyla_restart(mut ctx: *mut cobyla_context_t) -> libc::c_int {
     if ctx.is_null() {
         // *__errno_location() = 14 as libc::c_int;
         return -(3 as libc::c_int);
@@ -321,40 +321,40 @@ pub unsafe fn cobyla_restart(mut ctx: *mut cobyla_context_t) -> libc::c_int {
     (*ctx).status = 1 as libc::c_int;
     return (*ctx).status;
 }
-#[no_mangle]
-pub unsafe fn cobyla_get_status(mut ctx: *const cobyla_context_t) -> libc::c_int {
+
+pub(crate) unsafe fn cobyla_get_status(mut ctx: *const cobyla_context_t) -> libc::c_int {
     if ctx.is_null() {
         // *__errno_location() = 14 as libc::c_int;
         return -(3 as libc::c_int);
     }
     return (*ctx).status;
 }
-#[no_mangle]
-pub unsafe fn cobyla_get_nevals(mut ctx: *const cobyla_context_t) -> libc::c_long {
+
+pub(crate) unsafe fn cobyla_get_nevals(mut ctx: *const cobyla_context_t) -> libc::c_long {
     if ctx.is_null() {
         // *__errno_location() = 14 as libc::c_int;
         return -(1 as libc::c_int) as libc::c_long;
     }
     return (*ctx).nfvals;
 }
-#[no_mangle]
-pub unsafe fn cobyla_get_rho(mut ctx: *const cobyla_context_t) -> libc::c_double {
+
+pub(crate) unsafe fn cobyla_get_rho(mut ctx: *const cobyla_context_t) -> libc::c_double {
     if ctx.is_null() {
         // *__errno_location() = 14 as libc::c_int;
         return -(1 as libc::c_int) as libc::c_double;
     }
     return (*ctx).rho;
 }
-#[no_mangle]
-pub unsafe fn cobyla_get_last_f(mut ctx: *const cobyla_context_t) -> libc::c_double {
+
+pub(crate) unsafe fn cobyla_get_last_f(mut ctx: *const cobyla_context_t) -> libc::c_double {
     if ctx.is_null() {
         // *__errno_location() = 14 as libc::c_int;
         return -(1 as libc::c_int) as libc::c_double;
     }
     return (*ctx).f;
 }
-#[no_mangle]
-pub unsafe fn cobyla_iterate(
+
+pub(crate) unsafe fn cobyla_iterate(
     mut ctx: *mut cobyla_context_t,
     mut f: libc::c_double,
     mut x: *mut libc::c_double,
@@ -3453,8 +3453,8 @@ unsafe fn trstlp(
         }
     }
 }
-#[no_mangle]
-pub unsafe fn cobyla_reason(mut status: libc::c_int) -> *const libc::c_char {
+
+pub(crate) unsafe fn cobyla_reason(mut status: libc::c_int) -> *const libc::c_char {
     match status {
         1 => {
             return b"user requested to compute F(X) and C(X)\0" as *const u8
