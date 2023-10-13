@@ -2,10 +2,14 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2023-10-13
+
 * Remove `fmin_cobyla` implementation as `nlopt_cobyla` now renamed `minimize` based on NLopt implementation is more powerful
 Nevertheless Cobyla argmin solver is still based on initial implementation, not on NLopt one.
 * Remove gradient from `ObjFn` trait which is now renamed `Func`
-* `minimize` API rework to make it more Rusty
+* `minimize` API rework to make it more Rusty. 
+* Not all options of NLopt version are managed. Currently `cobyla::minimize` handles `xinit`, `bounds`, `max_eval`, `ftol_rel`, 
+`ftol_abs`, `xtol_rel`, `xtol_abs` and only inequality contraints (like c >= 0). See documentation for further details. 
 
 ## [0.4.0] - 2023-10-06
 
