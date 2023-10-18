@@ -203,17 +203,17 @@ pub fn minimize<F: Func<U>, G: Func<U>, U: Clone>(
 ) -> Result<SuccessOutcome, FailOutcome> {
     let fn_cfg = Box::new(NLoptFunctionCfg {
         objective_fn: func,
-        user_data: args.clone(), // move user_data into FunctionCfg
+        user_data: args.clone(),
     });
     let fn_cfg_ptr = Box::into_raw(fn_cfg) as *mut c_void;
-    let mut cstr_tol = 2e-4;
+    let mut cstr_tol = 0.0; // no cstr tolerance
 
     let mut cstr_cfg = cons
         .iter()
         .map(|c| {
             let c_cfg = Box::new(NLoptConstraintCfg {
                 constraint_fn: c as &dyn Func<U>,
-                user_data: args.clone(), // move user_data into FunctionCfg
+                user_data: args.clone(),
             });
             let c_cfg_ptr = Box::into_raw(c_cfg) as *mut c_void;
 
