@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.5.1] - 2023-10-19
+
+* Fix default constraint tolerance (set to zero, was 2e-4) 
+
 ## [0.5.0] - 2023-10-13
 
 * Remove `fmin_cobyla` implementation as `nlopt_cobyla` now renamed `minimize` based on NLopt implementation is more powerful
