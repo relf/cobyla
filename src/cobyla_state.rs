@@ -85,7 +85,8 @@ where
     ///
     /// ```
     /// # use argmin::core::{IterState, State};
-    /// # let state: IterState<Vec<f64>, (), (), (), (), f64> = IterState::new();
+    /// # use cobyla::CobylaState;
+    /// # let state = CobylaState::new();
     /// # let param_old = vec![1.0f64, 2.0f64];
     /// # let state = state.param(param_old);
     /// # assert!(state.prev_param.is_none());
@@ -530,8 +531,9 @@ impl State for CobylaState {
     /// # Example
     ///
     /// ```
-    /// # use argmin::core::{IterState, State, ArgminFloat, TerminationStatus};
-    /// # let mut state: IterState<Vec<f64>, (), (), (), (), f64> = IterState::new();
+    /// # use argmin::core::{State, ArgminFloat, TerminationStatus};
+    /// # use cobyla::CobylaState;
+    /// # let mut state = CobylaState::new();
     /// let termination_status = state.get_termination_status();
     /// # assert_eq!(*termination_status, TerminationStatus::NotTerminated);
     /// ```
@@ -544,8 +546,9 @@ impl State for CobylaState {
     /// # Example
     ///
     /// ```
-    /// # use argmin::core::{IterState, State, ArgminFloat, TerminationReason};
-    /// # let mut state: IterState<Vec<f64>, (), (), (), (), f64> = IterState::new();
+    /// # use argmin::core::{State, ArgminFloat, TerminationReason};
+    /// # use cobyla::CobylaState;
+    /// # let mut state = CobylaState::new();
     /// let termination_reason = state.get_termination_reason();
     /// # assert_eq!(termination_reason, None);
     /// ```
