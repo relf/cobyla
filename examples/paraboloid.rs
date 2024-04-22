@@ -1,5 +1,6 @@
-use argmin::core::observers::{ObserverMode, SlogLogger};
+use argmin::core::observers::ObserverMode;
 use argmin::core::{CostFunction, Error, Executor};
+use argmin_observer_slog::SlogLogger;
 use cobyla::{minimize, CobylaSolver, Func, RhoBeg, StopTols};
 
 /// Problem cost function

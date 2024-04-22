@@ -1,6 +1,7 @@
 use crate::cobyla::cobyla_context_t;
 /// Implementation of `argmin::IterState` for Cobyla optimizer
 use argmin::core::{Problem, State, TerminationReason, TerminationStatus};
+#[cfg(feature = "serde1")]
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
@@ -24,7 +25,8 @@ use std::mem::ManuallyDrop;
 /// * termination status
 /// * COBYLA specific parameters: rhobeg, rhoend, iprint, maxfun
 ///
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "serde1", derive(Serialize, Deserialize))]
 pub struct CobylaState {
     /// Current parameter vector
     pub param: Option<Vec<f64>>,
@@ -68,7 +70,7 @@ pub struct CobylaState {
     /// Cost function calls budget
     pub maxfun: i32,
 
-    #[serde(skip)]
+    #[cfg_attr(feature = "serde1", serde(skip))]
     pub cobyla_context: Option<ManuallyDrop<*mut cobyla_context_t>>,
 }
 
@@ -83,7 +85,7 @@ where
     ///
     /// ```
     /// # use argmin::core::{IterState, State};
-    /// # let state: IterState<Vec<f64>, (), (), (), f64> = IterState::new();
+    /// # let state: IterState<Vec<f64>, (), (), (), (), f64> = IterState::new();
     /// # let param_old = vec![1.0f64, 2.0f64];
     /// # let state = state.param(param_old);
     /// # assert!(state.prev_param.is_none());
@@ -529,7 +531,7 @@ impl State for CobylaState {
     ///
     /// ```
     /// # use argmin::core::{IterState, State, ArgminFloat, TerminationStatus};
-    /// # let mut state: IterState<Vec<f64>, (), (), (), f64> = IterState::new();
+    /// # let mut state: IterState<Vec<f64>, (), (), (), (), f64> = IterState::new();
     /// let termination_status = state.get_termination_status();
     /// # assert_eq!(*termination_status, TerminationStatus::NotTerminated);
     /// ```
@@ -543,7 +545,7 @@ impl State for CobylaState {
     ///
     /// ```
     /// # use argmin::core::{IterState, State, ArgminFloat, TerminationReason};
-    /// # let mut state: IterState<Vec<f64>, (), (), (), f64> = IterState::new();
+    /// # let mut state: IterState<Vec<f64>, (), (), (), (), f64> = IterState::new();
     /// let termination_reason = state.get_termination_reason();
     /// # assert_eq!(termination_reason, None);
     /// ```

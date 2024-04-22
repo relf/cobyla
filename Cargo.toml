@@ -11,10 +11,14 @@ keywords = ["optimizer", "optimization", "constrained", "derivative-free"]
 categories = ["algorithms", "api-bindings", "science"]
 documentation = "https://docs.rs/cobyla"
 
+[features]
+serde1 = ["dep:serde", "argmin/serde1"]
+
 [dependencies]
+serde = { version = "1", features = ["derive"], optional = true }
 libc = "0.2"
-argmin = "0.8.0"
-serde = "1"
+argmin-observer-slog = "0.1"
+argmin = "0.10"
 instant = "0.1"
 
 [dev-dependencies]
