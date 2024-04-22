@@ -6,13 +6,15 @@ use crate::cobyla_state::*;
 use std::mem::ManuallyDrop;
 
 use argmin::core::{CostFunction, Problem, Solver, State, TerminationStatus, KV};
+#[cfg(feature = "serde1")]
 use serde::{Deserialize, Serialize};
 
 /// [Argmin Solver](https://www.argmin-rs.org/book/index.html) which implements COBYLA method.
 ///
 /// ```
 /// use argmin::core::{CostFunction, Error, Executor};
-/// use argmin::core::observers::{ObserverMode, SlogLogger};
+/// use argmin::core::observers::{ObserverMode};
+/// use argmin_observer_slog::SlogLogger;
 /// use cobyla::CobylaSolver;
 ///
 /// struct ParaboloidProblem;
@@ -40,7 +42,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// println!("Result of COBYLA:\n{}", res);
 /// ```
-#[derive(Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serde1", derive(Serialize, Deserialize))]
 pub struct CobylaSolver {
     /// Initial guess for x value
     x0: Vec<f64>,
