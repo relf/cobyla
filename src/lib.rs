@@ -494,4 +494,42 @@ mod tests {
             }
         }
     }
+
+    fn xsinx(x: &[f64], _user_data: &mut ()) -> f64 {
+        //(x - 3.5) * ((x - 3.5) / std::f64::consts::PI).mapv(|v| v.sin())
+        (x[0] - 3.5) * f64::sin((x[0] - 3.5) / std::f64::consts::PI)
+    }
+
+    #[test]
+    fn test_xsinx() {
+        let xinit = vec![10.];
+
+        // let mut cons: Vec<&dyn Func<()>> = vec![];
+        let mut cons: Vec<&dyn Func<()>> = vec![];
+        let cstr1 = |x: &[f64], _user_data: &mut ()| 17. - x[0];
+        cons.push(&cstr1 as &dyn Func<()>);
+
+        // x_opt = [0, 0]
+        match minimize(
+            xsinx,
+            &xinit,
+            &[(0., 25.)],
+            &cons,
+            (),
+            200,
+            RhoBeg::All(0.5),
+            None,
+        ) {
+            Ok((_, x, _)) => {
+                let exp = [18.935];
+                let exp = [17.];
+                for (act, exp) in x.iter().zip(exp.iter()) {
+                    assert_abs_diff_eq!(act, exp, epsilon = 1e-2);
+                }
+            }
+            Err((status, _, _)) => {
+                panic!("{}", format!("Error status : {:?}", status));
+            }
+        }
+    }
 }
