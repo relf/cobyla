@@ -57,7 +57,7 @@ pub struct CobylaState {
     /// Evaluation counts
     pub counts: HashMap<String, u64>,
     /// Time required so far
-    pub time: Option<instant::Duration>,
+    pub time: Option<web_time::Duration>,
     /// Status of optimization execution
     pub termination_status: TerminationStatus,
 
@@ -260,8 +260,8 @@ impl State for CobylaState {
     /// # Example
     ///
     /// ```
-    /// # extern crate instant;
-    /// # use instant;
+    /// # extern crate web-time;
+    /// # use web_time;
     /// # use std::collections::HashMap;
     /// # use argmin::core::{State, TerminationStatus};
     /// use cobyla::CobylaState;
@@ -280,7 +280,7 @@ impl State for CobylaState {
     /// # assert_eq!(state.last_best_iter, 0);
     /// # assert_eq!(state.max_iters, std::u64::MAX);
     /// # assert_eq!(state.counts, HashMap::new());
-    /// # assert_eq!(state.time.unwrap(), instant::Duration::new(0, 0));
+    /// # assert_eq!(state.time.unwrap(), web_time::Duration::new(0, 0));
     /// # assert_eq!(state.termination_status, TerminationStatus::NotTerminated);
     /// ```
     fn new() -> Self {
@@ -300,7 +300,7 @@ impl State for CobylaState {
             last_best_iter: 0,
             max_iters: std::u64::MAX,
             counts: HashMap::new(),
-            time: Some(instant::Duration::new(0, 0)),
+            time: Some(web_time::Duration::new(0, 0)),
             termination_status: TerminationStatus::NotTerminated,
 
             rhobeg: 0.5,
@@ -411,15 +411,15 @@ impl State for CobylaState {
     /// # Example
     ///
     /// ```
-    /// # extern crate instant;
-    /// # use instant;
+    /// # extern crate web_time;
+    /// # use web_time;
     /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat, TerminationReason};
     /// # let mut state: CobylaState = CobylaState::new();
-    /// let state = state.time(Some(instant::Duration::new(0, 12)));
-    /// # assert_eq!(state.time.unwrap(), instant::Duration::new(0, 12));
+    /// let state = state.time(Some(web_time::Duration::new(0, 12)));
+    /// # assert_eq!(state.time.unwrap(), web_time::Duration::new(0, 12));
     /// ```
-    fn time(&mut self, time: Option<instant::Duration>) -> &mut Self {
+    fn time(&mut self, time: Option<web_time::Duration>) -> &mut Self {
         self.time = time;
         self
     }
@@ -564,15 +564,15 @@ impl State for CobylaState {
     /// # Example
     ///
     /// ```
-    /// # extern crate instant;
-    /// # use instant;
+    /// # extern crate web_time;
+    /// # use web_time;
     /// # use cobyla::CobylaState;
     /// # use argmin::core::{State, ArgminFloat};
     /// # let mut state: CobylaState = CobylaState::new();
     /// let time = state.get_time();
-    /// # assert_eq!(time.unwrap(), instant::Duration::new(0, 0));
+    /// # assert_eq!(time.unwrap(), web_time::Duration::new(0, 0));
     /// ```
-    fn get_time(&self) -> Option<instant::Duration> {
+    fn get_time(&self) -> Option<web_time::Duration> {
         self.time
     }
 
