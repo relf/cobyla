@@ -260,7 +260,7 @@ impl State for CobylaState {
     /// # Example
     ///
     /// ```
-    /// # extern crate web-time;
+    /// # extern crate web_time;
     /// # use web_time;
     /// # use std::collections::HashMap;
     /// # use argmin::core::{State, TerminationStatus};
