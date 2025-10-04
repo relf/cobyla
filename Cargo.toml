@@ -2,7 +2,7 @@
 authors = ["Remi Lafage <remi.lafage@onera.fr>"]
 name = "cobyla"
 version = "0.6.0"
-edition = "2021"
+edition = "2024"
 license-file = "LICENSE.md"
 description = "COBYLA optimizer for Rust"
 readme = "README.md"

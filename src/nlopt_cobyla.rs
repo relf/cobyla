@@ -6,6 +6,7 @@
     non_upper_case_globals,
     unused_assignments,
     unused_mut,
+    unsafe_op_in_unsafe_fn,
     clippy::needless_return,
     clippy::zero_ptr,
     clippy::toplevel_ref_arg,
@@ -571,11 +572,7 @@ unsafe fn nlopt_stop_xs(
 unsafe fn nlopt_isinf(mut x: libc::c_double) -> libc::c_int {
     return ((x).abs() >= f64::INFINITY * 0.99f64
         || if x.is_infinite() {
-            if x.is_sign_positive() {
-                1
-            } else {
-                -1
-            }
+            if x.is_sign_positive() { 1 } else { -1 }
         } else {
             0
         } != 0) as libc::c_int;

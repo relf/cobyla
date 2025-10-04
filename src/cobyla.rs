@@ -6,6 +6,7 @@
     non_upper_case_globals,
     unused_assignments,
     unused_mut,
+    unsafe_op_in_unsafe_fn,
     clippy::needless_return,
     clippy::zero_ptr,
     clippy::toplevel_ref_arg,
