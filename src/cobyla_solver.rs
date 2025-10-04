@@ -58,7 +58,9 @@ impl<O> Solver<O, CobylaState> for CobylaSolver
 where
     O: CostFunction<Param = Vec<f64>, Output = Vec<f64>>,
 {
-    const NAME: &'static str = "COBYLA";
+    fn name(&self) -> &str {
+        "COBYLA"
+    }
 
     /// Initializes the algorithm.
     ///
