@@ -298,7 +298,7 @@ impl State for CobylaState {
 
             iter: 0,
             last_best_iter: 0,
-            max_iters: std::u64::MAX,
+            max_iters: u64::MAX,
             counts: HashMap::new(),
             time: Some(web_time::Duration::new(0, 0)),
             termination_status: TerminationStatus::NotTerminated,
@@ -376,7 +376,7 @@ impl State for CobylaState {
     /// # use argmin::core::{State, ArgminFloat};
     ///
     /// # let mut state: CobylaState = CobylaState::new();
-
+    ///
     /// # assert!(state.best_param.is_none());
     /// # state.best_param = Some(vec![1.0, 2.0]);
     /// # assert_eq!(state.best_param.as_ref().unwrap()[0].to_ne_bytes(), 1.0f64.to_ne_bytes());

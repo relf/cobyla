@@ -306,6 +306,7 @@ unsafe fn nlopt_seconds() -> libc::c_double {
         start_inited = true;
         start = SystemTime::now();
     }
+    #[allow(static_mut_refs)]
     start
         .duration_since(UNIX_EPOCH)
         .expect("Time flies")
@@ -568,7 +569,7 @@ unsafe fn nlopt_stop_xs(
 }
 
 unsafe fn nlopt_isinf(mut x: libc::c_double) -> libc::c_int {
-    return ((x).abs() >= ::std::f64::INFINITY * 0.99f64
+    return ((x).abs() >= f64::INFINITY * 0.99f64
         || if x.is_infinite() {
             if x.is_sign_positive() {
                 1
@@ -1408,7 +1409,7 @@ unsafe fn cobylb(
     let mut rc: nlopt_result = NLOPT_SUCCESS;
     let mut seed: uint32_t = (*n + *m) as uint32_t;
     let mut feasible: libc::c_int = 0;
-    *minf = ::std::f64::INFINITY;
+    *minf = f64::INFINITY;
     a_dim1 = *n;
     a_offset = 1 as libc::c_int + a_dim1 * 1 as libc::c_int;
     a = a.offset(-(a_offset as isize));

@@ -521,7 +521,7 @@ mod tests {
             None,
         ) {
             Ok((_, x, _)) => {
-                let exp = [18.935];
+                //let exp = [18.935];
                 let exp = [17.];
                 for (act, exp) in x.iter().zip(exp.iter()) {
                     assert_abs_diff_eq!(act, exp, epsilon = 1e-2);
