@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.7.0] - 2025-10-04
+
+* Upgrade to argmin 0.11.0
+* Bump to edition 2024
+* Use `web-time` instead of deprecated `instant`
+
 ## [0.6.0] - 2024-04-22
 
 * Upgrade to argmin 0.10.0:
