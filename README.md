@@ -12,7 +12,8 @@ and take into account constraints on the variables. The algorithm is described i
   > Kluwer Academic Publishers, pp. 51-67 (1994).
 
 The algorithm comes into two flavours :
-* As a function `minimize`, the Rust code was generated from the C code of the [NLopt](https://github.com/stevengj/nlopt) project (version 2.7.1) * and optionally as an [argmin](https://github.com/argmin-rs/argmin) solver, CobylaSolver, the Rust code was generated from the C code from [here](https://github.com/emmt/Algorithms/tree/master/cobyla) 
+* As a function `minimize`: the Rust code was generated from the C code of the [NLopt](https://github.com/stevengj/nlopt) project (version 2.7.1) 
+* and optionally as an [argmin](https://github.com/argmin-rs/argmin) solver, CobylaSolver: the Rust code was generated from the C code from [here](https://github.com/emmt/Algorithms/tree/master/cobyla) 
  
 
 In both cases, an initial transpilation was done with [c2rust](https://github.com/immunant/c2rust) then the code was manually edited to make it work. The callback mechanismn is inspired from the Rust binding of NLopt, namely [rust-nlopt](https://github.com/adwhit/rust-nlopt)
@@ -23,7 +24,7 @@ In both cases, an initial transpilation was done with [c2rust](https://github.co
 cargo run --example paraboloid
 ```
 
-or to also solve with the argmin solver, `CobylaSolver`
+or to solve with the argmin COBYLA solver too
 
 ```bash
 cargo run --example paraboloid --feature argmin
