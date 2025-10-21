@@ -7,17 +7,21 @@ mod nlopt_cobyla;
 pub use crate::nlopt_cobyla::Func;
 
 use crate::nlopt_cobyla::{
+    NLoptConstraintCfg,
+    NLoptFunctionCfg,
     cobyla_minimize,
     nlopt_constraint_raw_callback, // nlopt_eval_constraint,
     nlopt_function_raw_callback,
     nlopt_stopping,
-    NLoptConstraintCfg,
-    NLoptFunctionCfg,
 };
 
+#[cfg(feature = "argmin")]
 mod cobyla_solver;
+#[cfg(feature = "argmin")]
 mod cobyla_state;
+#[cfg(feature = "argmin")]
 pub use crate::cobyla_solver::*;
+#[cfg(feature = "argmin")]
 pub use crate::cobyla_state::*;
 
 use std::os::raw::c_void;

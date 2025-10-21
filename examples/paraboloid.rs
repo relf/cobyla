@@ -1,15 +1,22 @@
-use argmin::core::observers::ObserverMode;
-use argmin::core::{CostFunction, Error, Executor};
+use cobyla::{Func, RhoBeg, StopTols, minimize};
+
+/// Optional COBYLA implementation as an argmin solver: CobylaSolver
+#[cfg(feature = "argmin")]
+use argmin::core::{CostFunction, Error, Executor, observers::ObserverMode};
+#[cfg(feature = "argmin")]
 use argmin_observer_slog::SlogLogger;
-use cobyla::{minimize, CobylaSolver, Func, RhoBeg, StopTols};
+#[cfg(feature = "argmin")]
+use cobyla::CobylaSolver;
 
 /// Problem cost function
 fn paraboloid(x: &[f64], _data: &mut ()) -> f64 {
     10. * (x[0] + 1.).powf(2.) + x[1].powf(2.)
 }
 
-/// Problem Definition: minimize paraboloid(x) subject to x0 >= 0
+/// Problem Definition for CobylaSolver : minimize paraboloid(x) subject to x0 >= 0
+#[cfg(feature = "argmin")]
 struct ParaboloidProblem;
+#[cfg(feature = "argmin")]
 impl CostFunction for ParaboloidProblem {
     type Param = Vec<f64>;
     type Output = Vec<f64>;
@@ -55,20 +62,24 @@ fn main() {
         Err((e, _, _)) => println!("Optim error: {:?}", e),
     }
 
-    println!(
-        "*** Solve paraboloid problem using Cobyla argmin solver implemented on top of fmin_cobyla impl"
-    );
-    let problem = ParaboloidProblem;
-    let solver = CobylaSolver::new(vec![1., 1.]);
+    #[cfg(feature = "argmin")]
+    {
+        println!(
+            "*** Solve paraboloid problem using Cobyla argmin solver implemented on top of fmin_cobyla impl"
+        );
+        let problem = ParaboloidProblem;
+        let solver = CobylaSolver::new(vec![1., 1.]);
 
-    let res = Executor::new(problem, solver)
-        .configure(|state| state.max_iters(100).iprint(0))
-        .add_observer(SlogLogger::term(), ObserverMode::Always)
-        .run()
-        .unwrap();
+        let res = Executor::new(problem, solver)
+            .timer(true)
+            .configure(|state| state.max_iters(100).iprint(0))
+            .add_observer(SlogLogger::term(), ObserverMode::Always)
+            .run()
+            .unwrap();
 
-    // Wait a second (lets the logger flush everything before printing again)
-    std::thread::sleep(std::time::Duration::from_secs(1));
-    println!("*** Result argmin solver impl ***");
-    println!("Result:\n{}", res);
+        // Wait a second (lets the logger flush everything before printing again)
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        println!("*** Result argmin solver impl ***");
+        println!("Result:\n{}", res);
+    }
 }

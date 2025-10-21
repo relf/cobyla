@@ -1,7 +1,7 @@
 [package]
 authors = ["Remi Lafage <remi.lafage@onera.fr>"]
 name = "cobyla"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2024"
 license-file = "LICENSE.md"
 description = "COBYLA optimizer for Rust"
@@ -12,14 +12,15 @@ categories = ["algorithms", "api-bindings", "science"]
 documentation = "https://docs.rs/cobyla"
 
 [features]
+argmin = ["dep:argmin", "dep:argmin-observer-slog", "dep:web-time"]
 serde1 = ["dep:serde", "argmin/serde1"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"], optional = true }
 libc = "0.2"
-argmin-observer-slog = "0.2"
-argmin = "0.11"
-web-time = "1.1.0"
+argmin = { version = "0.11", optional = true }
+argmin-observer-slog = { version = "0.2", optional = true }
+web-time = { version = "1.1.0", optional = true }
 
 [dev-dependencies]
 approx = "0.5"

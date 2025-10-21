@@ -34,3 +34,9 @@ jobs:
         with:
           command: test
           args: --all --release
+
+      - name: Run cargo test with argmin enabled
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all --release --features=argmin 

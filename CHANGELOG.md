@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.8.0] - 2025-10-20
+
+* Gate COBYLA argmin COBYLA solver behind `argmin` feature.
+  Migration guide: If you use `CobylaSolver` change your Cargo.toml as follows:
+  `cobyla = { version = "0.7", features = ["argmin"] }`
+
 ## [0.7.0] - 2025-10-04
 
 * Upgrade to argmin 0.11.0
