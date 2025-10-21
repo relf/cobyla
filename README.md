@@ -27,7 +27,7 @@ cargo run --example paraboloid
 or to solve with the argmin COBYLA solver too
 
 ```bash
-cargo run --example paraboloid --feature argmin
+cargo run --example paraboloid --features argmin
 ```
 
 ## Related projects
