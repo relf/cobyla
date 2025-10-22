@@ -1,4 +1,4 @@
-use cobyla::{Func, RhoBeg, StopTols, minimize};
+use cobyla::{Func, RhoBeg, StopTols, minimize, minimize_with_nevals};
 
 /// Optional COBYLA implementation as an argmin solver: CobylaSolver
 #[cfg(feature = "argmin")]
@@ -44,6 +44,7 @@ fn main() {
         ..StopTols::default()
     };
 
+    // Example 1: Using minimize without function evaluation count
     match minimize(
         paraboloid,
         &xinit,
@@ -52,15 +53,37 @@ fn main() {
         (),
         200,
         RhoBeg::All(0.5),
-        Some(stop_tol),
+        Some(stop_tol.clone()),
     ) {
-        Ok((status, x_opt, y_opt, nfeval)) => {
+        Ok((status, x_opt, y_opt)) => {
+            println!("status = {:?}", status);
+            println!("x_opt = {:?}", x_opt);
+            println!("y_opt = {}", y_opt);
+        }
+        Err((e, _, _)) => println!("Optim error: {:?}", e),
+    }
+
+    println!("\n*** With function evaluation count");
+    
+    // Example 2: Using minimize_with_nevals to get function evaluation count
+    let (result, nfeval) = minimize_with_nevals(
+        paraboloid,
+        &xinit,
+        &[(-10., 10.), (-10., 10.)],
+        &cons,
+        (),
+        200,
+        RhoBeg::All(0.5),
+        Some(stop_tol),
+    );
+    match result {
+        Ok((status, x_opt, y_opt)) => {
             println!("status = {:?}", status);
             println!("x_opt = {:?}", x_opt);
             println!("y_opt = {}", y_opt);
             println!("function evaluations = {}", nfeval);
         }
-        Err((e, _, _, _)) => println!("Optim error: {:?}", e),
+        Err((e, _, _)) => println!("Optim error: {:?}", e),
     }
 
     #[cfg(feature = "argmin")]

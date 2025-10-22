@@ -49,9 +49,9 @@ pub enum SuccessStatus {
 }
 
 /// Outcome when optimization process fails
-type FailOutcome = (FailStatus, Vec<f64>, f64, i32);
+type FailOutcome = (FailStatus, Vec<f64>, f64);
 /// Outcome when optimization process succeeds
-type SuccessOutcome = (SuccessStatus, Vec<f64>, f64, i32);
+type SuccessOutcome = (SuccessStatus, Vec<f64>, f64);
 
 /// Tolerances used as termination criteria.
 /// For all, condition is disabled if value is not strictly positive.
@@ -98,7 +98,9 @@ pub enum RhoBeg {
 ///     
 /// ## Returns
 ///
-/// The status of the optimization process, the argmin value, the objective function value, and the number of function evaluations
+/// A `Result` containing either:
+/// - `Ok((status, x, f))` on success
+/// - `Err((status, x, f))` on failure
 ///
 /// ## Panics
 ///
@@ -134,16 +136,19 @@ pub enum RhoBeg {
 ///     RhoBeg::All(0.5),
 ///     None
 /// ) {
-///     Ok((status, x_opt, y_opt, nfeval)) => {
+///     Ok((status, x_opt, y_opt)) => {
 ///         println!("status = {:?}", status);
 ///         println!("x_opt = {:?}", x_opt);
 ///         println!("y_opt = {}", y_opt);
-///         println!("function evaluations = {}", nfeval);
 /// #        assert_abs_diff_eq!(y_opt, 10.0);
 ///     }
-///     Err((e, _, _, _)) => println!("Optim error: {:?}", e),
+///     Err((e, _, _)) => println!("Optim error: {:?}", e),
 /// }
 /// ```
+///
+/// ## See also
+///
+/// Use [`minimize_with_nevals`] if you need to track the number of function evaluations.
 ///
 /// ## Algorithm description:
 ///
@@ -206,6 +211,80 @@ pub fn minimize<F: Func<U>, G: Func<U>, U: Clone>(
     rhobeg: RhoBeg,
     stop_tol: Option<StopTols>,
 ) -> Result<SuccessOutcome, FailOutcome> {
+    let (result, _nevals) = minimize_internal(func, xinit, bounds, cons, args, maxeval, rhobeg, stop_tol);
+    result
+}
+
+/// Minimizes a function using COBYLA and returns the number of function evaluations.
+///
+/// This is identical to [`minimize`] but also returns the number of function evaluations
+/// performed during optimization.
+///
+/// ## Returns
+///
+/// A tuple `(Result, i32)` where:
+/// - The `Result` contains either `Ok((status, x, f))` or `Err((status, x, f))`
+/// - The `i32` is the number of function evaluations performed
+///
+/// ## Example
+/// ```
+/// # use approx::assert_abs_diff_eq;
+/// use cobyla::{minimize_with_nevals, Func, RhoBeg};
+///
+/// fn paraboloid(x: &[f64], _data: &mut ()) -> f64 {
+///     10. * (x[0] + 1.).powf(2.) + x[1].powf(2.)
+/// }
+///
+/// let mut x = vec![1., 1.];
+/// let cstr1 = |x: &[f64], _user_data: &mut ()| x[0];
+/// let cons: Vec<&dyn Func<()>> = vec![&cstr1];
+///
+/// let (result, nevals) = minimize_with_nevals(
+///     paraboloid,
+///     &mut x,
+///     &[(-10., 10.), (-10., 10.)],
+///     &cons,
+///     (),
+///     200,
+///     RhoBeg::All(0.5),
+///     None
+/// );
+///
+/// match result {
+///     Ok((status, x_opt, y_opt)) => {
+///         println!("Optimized in {} evaluations", nevals);
+/// #        assert_abs_diff_eq!(y_opt, 10.0);
+///     }
+///     Err((e, _, _)) => println!("Optim error: {:?}", e),
+/// }
+/// ```
+#[allow(clippy::useless_conversion)]
+#[allow(clippy::too_many_arguments)]
+pub fn minimize_with_nevals<F: Func<U>, G: Func<U>, U: Clone>(
+    func: F,
+    xinit: &[f64],
+    bounds: &[(f64, f64)],
+    cons: &[G],
+    args: U,
+    maxeval: usize,
+    rhobeg: RhoBeg,
+    stop_tol: Option<StopTols>,
+) -> (Result<SuccessOutcome, FailOutcome>, i32) {
+    minimize_internal(func, xinit, bounds, cons, args, maxeval, rhobeg, stop_tol)
+}
+
+#[allow(clippy::useless_conversion)]
+#[allow(clippy::too_many_arguments)]
+fn minimize_internal<F: Func<U>, G: Func<U>, U: Clone>(
+    func: F,
+    xinit: &[f64],
+    bounds: &[(f64, f64)],
+    cons: &[G],
+    args: U,
+    maxeval: usize,
+    rhobeg: RhoBeg,
+    stop_tol: Option<StopTols>,
+) -> (Result<SuccessOutcome, FailOutcome>, i32) {
     let fn_cfg = Box::new(NLoptFunctionCfg {
         objective_fn: func,
         user_data: args.clone(),
@@ -327,20 +406,22 @@ pub fn minimize<F: Func<U>, G: Func<U>, U: Clone>(
         let _ = Box::from_raw(fn_cfg_ptr as *mut NLoptFunctionCfg<F, U>);
     };
 
-    match status {
-        -1 => Err((FailStatus::Failure, x, minf, nevals_p)),
-        -2 => Err((FailStatus::InvalidArgs, x, minf, nevals_p)),
-        -3 => Err((FailStatus::OutOfMemory, x, minf, nevals_p)),
-        -4 => Err((FailStatus::RoundoffLimited, x, minf, nevals_p)),
-        -5 => Err((FailStatus::ForcedStop, x, minf, nevals_p)),
-        1 => Ok((SuccessStatus::Success, x, minf, nevals_p)),
-        2 => Ok((SuccessStatus::StopValReached, x, minf, nevals_p)),
-        3 => Ok((SuccessStatus::FtolReached, x, minf, nevals_p)),
-        4 => Ok((SuccessStatus::XtolReached, x, minf, nevals_p)),
-        5 => Ok((SuccessStatus::MaxEvalReached, x, minf, nevals_p)),
-        6 => Ok((SuccessStatus::MaxTimeReached, x, minf, nevals_p)),
-        _ => Err((FailStatus::UnexpectedError, x, minf, nevals_p)),
-    }
+    let result = match status {
+        -1 => Err((FailStatus::Failure, x, minf)),
+        -2 => Err((FailStatus::InvalidArgs, x, minf)),
+        -3 => Err((FailStatus::OutOfMemory, x, minf)),
+        -4 => Err((FailStatus::RoundoffLimited, x, minf)),
+        -5 => Err((FailStatus::ForcedStop, x, minf)),
+        1 => Ok((SuccessStatus::Success, x, minf)),
+        2 => Ok((SuccessStatus::StopValReached, x, minf)),
+        3 => Ok((SuccessStatus::FtolReached, x, minf)),
+        4 => Ok((SuccessStatus::XtolReached, x, minf)),
+        5 => Ok((SuccessStatus::MaxEvalReached, x, minf)),
+        6 => Ok((SuccessStatus::MaxTimeReached, x, minf)),
+        _ => Err((FailStatus::UnexpectedError, x, minf)),
+    };
+
+    (result, nevals_p)
 }
 
 #[cfg(test)]
@@ -441,13 +522,13 @@ mod tests {
             RhoBeg::All(0.5),
             None,
         ) {
-            Ok((_, x, _, _)) => {
+            Ok((_, x, _)) => {
                 let exp = [0., 0.];
                 for (act, exp) in x.iter().zip(exp.iter()) {
                     assert_abs_diff_eq!(act, exp, epsilon = 1e-3);
                 }
             }
-            Err((status, _, _, _)) => {
+            Err((status, _, _)) => {
                 panic!("{}", format!("Error status : {:?}", status));
             }
         }
@@ -486,14 +567,14 @@ mod tests {
             RhoBeg::All(0.5),
             Some(stop_tol),
         ) {
-            Ok((_, x, _, _)) => {
+            Ok((_, x, _)) => {
                 let sqrt_0_5: f64 = 0.5_f64.sqrt();
                 let exp = [sqrt_0_5, sqrt_0_5];
                 for (act, exp) in x.iter().zip(exp.iter()) {
                     assert_abs_diff_eq!(act, exp, epsilon = 1e-3);
                 }
             }
-            Err((status, _, _, _)) => {
+            Err((status, _, _)) => {
                 println!("Error status : {:?}", status);
                 panic!("Test fail");
             }
@@ -515,7 +596,7 @@ mod tests {
         cons.push(&cstr1 as &dyn Func<()>);
 
         // x_opt = [0, 0]
-        match minimize(
+        let (result, nfeval) = minimize_with_nevals(
             xsinx,
             &xinit,
             &[(0., 25.)],
@@ -524,8 +605,9 @@ mod tests {
             200,
             RhoBeg::All(0.5),
             None,
-        ) {
-            Ok((_, x, _, nfeval)) => {
+        );
+        match result {
+            Ok((_, x, _)) => {
                 //let exp = [18.935];
                 let exp = [17.];
                 for (act, exp) in x.iter().zip(exp.iter()) {
@@ -534,7 +616,7 @@ mod tests {
                 // Verify that function evaluations were counted
                 assert!(nfeval > 0, "Function evaluations should be greater than 0");
             }
-            Err((status, _, _, _)) => {
+            Err((status, _, _)) => {
                 panic!("{}", format!("Error status : {:?}", status));
             }
         }
@@ -547,7 +629,7 @@ mod tests {
         let cstr1 = |x: &[f64], _user_data: &mut ()| x[0];
         cons.push(&cstr1 as &dyn Func<()>);
 
-        match minimize(
+        let (result, nfeval) = minimize_with_nevals(
             paraboloid,
             &xinit,
             &[(-10., 10.), (-10., 10.)],
@@ -556,8 +638,9 @@ mod tests {
             50, // Limited max evals
             RhoBeg::All(0.5),
             None,
-        ) {
-            Ok((_, _, _, nfeval)) => {
+        );
+        match result {
+            Ok((_, _, _)) => {
                 // Function evaluation count should be positive and equal or less than maxeval
                 assert!(nfeval > 0, "Function evaluations should be positive");
                 assert!(
@@ -566,7 +649,7 @@ mod tests {
                 );
                 println!("Function evaluations: {}", nfeval);
             }
-            Err((_, _, _, nfeval)) => {
+            Err((_, _, _)) => {
                 // Even on failure, we should get evaluation count
                 assert!(
                     nfeval > 0,

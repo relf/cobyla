@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-* Add function evaluation count to return values of `minimize` function. The success and failure outcomes now include the number of function evaluations as a fourth element in the tuple: `(status, x, f, nfeval)`.
+* Add `minimize_with_nevals` function that returns both the optimization result and the number of function evaluations performed. The existing `minimize` function remains unchanged for backwards compatibility.
 
 ## [0.8.0] - 2025-10-21
 
