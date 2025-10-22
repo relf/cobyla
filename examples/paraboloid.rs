@@ -54,12 +54,13 @@ fn main() {
         RhoBeg::All(0.5),
         Some(stop_tol),
     ) {
-        Ok((status, x_opt, y_opt)) => {
+        Ok((status, x_opt, y_opt, nfeval)) => {
             println!("status = {:?}", status);
             println!("x_opt = {:?}", x_opt);
             println!("y_opt = {}", y_opt);
+            println!("function evaluations = {}", nfeval);
         }
-        Err((e, _, _)) => println!("Optim error: {:?}", e),
+        Err((e, _, _, _)) => println!("Optim error: {:?}", e),
     }
 
     #[cfg(feature = "argmin")]

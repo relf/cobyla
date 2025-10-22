@@ -49,9 +49,9 @@ pub enum SuccessStatus {
 }
 
 /// Outcome when optimization process fails
-type FailOutcome = (FailStatus, Vec<f64>, f64);
+type FailOutcome = (FailStatus, Vec<f64>, f64, i32);
 /// Outcome when optimization process succeeds
-type SuccessOutcome = (SuccessStatus, Vec<f64>, f64);
+type SuccessOutcome = (SuccessStatus, Vec<f64>, f64, i32);
 
 /// Tolerances used as termination criteria.
 /// For all, condition is disabled if value is not strictly positive.
@@ -98,7 +98,7 @@ pub enum RhoBeg {
 ///     
 /// ## Returns
 ///
-/// The status of the optimization process, the argmin value and the objective function value
+/// The status of the optimization process, the argmin value, the objective function value, and the number of function evaluations
 ///
 /// ## Panics
 ///
@@ -134,13 +134,14 @@ pub enum RhoBeg {
 ///     RhoBeg::All(0.5),
 ///     None
 /// ) {
-///     Ok((status, x_opt, y_opt)) => {
+///     Ok((status, x_opt, y_opt, nfeval)) => {
 ///         println!("status = {:?}", status);
 ///         println!("x_opt = {:?}", x_opt);
 ///         println!("y_opt = {}", y_opt);
+///         println!("function evaluations = {}", nfeval);
 /// #        assert_abs_diff_eq!(y_opt, 10.0);
 ///     }
-///     Err((e, _, _)) => println!("Optim error: {:?}", e),
+///     Err((e, _, _, _)) => println!("Optim error: {:?}", e),
 /// }
 /// ```
 ///
@@ -327,18 +328,18 @@ pub fn minimize<F: Func<U>, G: Func<U>, U: Clone>(
     };
 
     match status {
-        -1 => Err((FailStatus::Failure, x, minf)),
-        -2 => Err((FailStatus::InvalidArgs, x, minf)),
-        -3 => Err((FailStatus::OutOfMemory, x, minf)),
-        -4 => Err((FailStatus::RoundoffLimited, x, minf)),
-        -5 => Err((FailStatus::ForcedStop, x, minf)),
-        1 => Ok((SuccessStatus::Success, x, minf)),
-        2 => Ok((SuccessStatus::StopValReached, x, minf)),
-        3 => Ok((SuccessStatus::FtolReached, x, minf)),
-        4 => Ok((SuccessStatus::XtolReached, x, minf)),
-        5 => Ok((SuccessStatus::MaxEvalReached, x, minf)),
-        6 => Ok((SuccessStatus::MaxTimeReached, x, minf)),
-        _ => Err((FailStatus::UnexpectedError, x, minf)),
+        -1 => Err((FailStatus::Failure, x, minf, nevals_p)),
+        -2 => Err((FailStatus::InvalidArgs, x, minf, nevals_p)),
+        -3 => Err((FailStatus::OutOfMemory, x, minf, nevals_p)),
+        -4 => Err((FailStatus::RoundoffLimited, x, minf, nevals_p)),
+        -5 => Err((FailStatus::ForcedStop, x, minf, nevals_p)),
+        1 => Ok((SuccessStatus::Success, x, minf, nevals_p)),
+        2 => Ok((SuccessStatus::StopValReached, x, minf, nevals_p)),
+        3 => Ok((SuccessStatus::FtolReached, x, minf, nevals_p)),
+        4 => Ok((SuccessStatus::XtolReached, x, minf, nevals_p)),
+        5 => Ok((SuccessStatus::MaxEvalReached, x, minf, nevals_p)),
+        6 => Ok((SuccessStatus::MaxTimeReached, x, minf, nevals_p)),
+        _ => Err((FailStatus::UnexpectedError, x, minf, nevals_p)),
     }
 }
 
@@ -440,13 +441,13 @@ mod tests {
             RhoBeg::All(0.5),
             None,
         ) {
-            Ok((_, x, _)) => {
+            Ok((_, x, _, _)) => {
                 let exp = [0., 0.];
                 for (act, exp) in x.iter().zip(exp.iter()) {
                     assert_abs_diff_eq!(act, exp, epsilon = 1e-3);
                 }
             }
-            Err((status, _, _)) => {
+            Err((status, _, _, _)) => {
                 panic!("{}", format!("Error status : {:?}", status));
             }
         }
@@ -485,14 +486,14 @@ mod tests {
             RhoBeg::All(0.5),
             Some(stop_tol),
         ) {
-            Ok((_, x, _)) => {
+            Ok((_, x, _, _)) => {
                 let sqrt_0_5: f64 = 0.5_f64.sqrt();
                 let exp = [sqrt_0_5, sqrt_0_5];
                 for (act, exp) in x.iter().zip(exp.iter()) {
                     assert_abs_diff_eq!(act, exp, epsilon = 1e-3);
                 }
             }
-            Err((status, _, _)) => {
+            Err((status, _, _, _)) => {
                 println!("Error status : {:?}", status);
                 panic!("Test fail");
             }
@@ -524,15 +525,54 @@ mod tests {
             RhoBeg::All(0.5),
             None,
         ) {
-            Ok((_, x, _)) => {
+            Ok((_, x, _, nfeval)) => {
                 //let exp = [18.935];
                 let exp = [17.];
                 for (act, exp) in x.iter().zip(exp.iter()) {
                     assert_abs_diff_eq!(act, exp, epsilon = 1e-2);
                 }
+                // Verify that function evaluations were counted
+                assert!(nfeval > 0, "Function evaluations should be greater than 0");
             }
-            Err((status, _, _)) => {
+            Err((status, _, _, _)) => {
                 panic!("{}", format!("Error status : {:?}", status));
+            }
+        }
+    }
+
+    #[test]
+    fn test_function_evaluation_count() {
+        let xinit = vec![1., 1.];
+        let mut cons: Vec<&dyn Func<()>> = vec![];
+        let cstr1 = |x: &[f64], _user_data: &mut ()| x[0];
+        cons.push(&cstr1 as &dyn Func<()>);
+
+        match minimize(
+            paraboloid,
+            &xinit,
+            &[(-10., 10.), (-10., 10.)],
+            &cons,
+            (),
+            50, // Limited max evals
+            RhoBeg::All(0.5),
+            None,
+        ) {
+            Ok((_, _, _, nfeval)) => {
+                // Function evaluation count should be positive and equal or less than maxeval
+                assert!(nfeval > 0, "Function evaluations should be positive");
+                assert!(
+                    nfeval <= 50,
+                    "Function evaluations should not exceed maxeval"
+                );
+                println!("Function evaluations: {}", nfeval);
+            }
+            Err((_, _, _, nfeval)) => {
+                // Even on failure, we should get evaluation count
+                assert!(
+                    nfeval > 0,
+                    "Function evaluations should be positive even on error"
+                );
+                println!("Function evaluations on error: {}", nfeval);
             }
         }
     }

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+* Add function evaluation count to return values of `minimize` function. The success and failure outcomes now include the number of function evaluations as a fourth element in the tuple: `(status, x, f, nfeval)`.
+
 ## [0.8.0] - 2025-10-21
 
 * Gate argmin COBYLA solver behind `argmin` feature.
