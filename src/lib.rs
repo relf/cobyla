@@ -98,7 +98,9 @@ pub enum RhoBeg {
 ///     
 /// ## Returns
 ///
-/// The status of the optimization process, the argmin value and the objective function value
+/// A `Result` containing either:
+/// - `Ok((status, x, f))` on success
+/// - `Err((status, x, f))` on failure
 ///
 /// ## Panics
 ///
@@ -143,6 +145,10 @@ pub enum RhoBeg {
 ///     Err((e, _, _)) => println!("Optim error: {:?}", e),
 /// }
 /// ```
+///
+/// ## See also
+///
+/// Use [`minimize_with_nevals`] if you need to track the number of function evaluations.
 ///
 /// ## Algorithm description:
 ///
@@ -205,6 +211,80 @@ pub fn minimize<F: Func<U>, G: Func<U>, U: Clone>(
     rhobeg: RhoBeg,
     stop_tol: Option<StopTols>,
 ) -> Result<SuccessOutcome, FailOutcome> {
+    let (result, _nevals) = minimize_internal(func, xinit, bounds, cons, args, maxeval, rhobeg, stop_tol);
+    result
+}
+
+/// Minimizes a function using COBYLA and returns the number of function evaluations.
+///
+/// This is identical to [`minimize`] but also returns the number of function evaluations
+/// performed during optimization.
+///
+/// ## Returns
+///
+/// A tuple `(Result, i32)` where:
+/// - The `Result` contains either `Ok((status, x, f))` or `Err((status, x, f))`
+/// - The `i32` is the number of function evaluations performed
+///
+/// ## Example
+/// ```
+/// # use approx::assert_abs_diff_eq;
+/// use cobyla::{minimize_with_nevals, Func, RhoBeg};
+///
+/// fn paraboloid(x: &[f64], _data: &mut ()) -> f64 {
+///     10. * (x[0] + 1.).powf(2.) + x[1].powf(2.)
+/// }
+///
+/// let mut x = vec![1., 1.];
+/// let cstr1 = |x: &[f64], _user_data: &mut ()| x[0];
+/// let cons: Vec<&dyn Func<()>> = vec![&cstr1];
+///
+/// let (result, nevals) = minimize_with_nevals(
+///     paraboloid,
+///     &mut x,
+///     &[(-10., 10.), (-10., 10.)],
+///     &cons,
+///     (),
+///     200,
+///     RhoBeg::All(0.5),
+///     None
+/// );
+///
+/// match result {
+///     Ok((status, x_opt, y_opt)) => {
+///         println!("Optimized in {} evaluations", nevals);
+/// #        assert_abs_diff_eq!(y_opt, 10.0);
+///     }
+///     Err((e, _, _)) => println!("Optim error: {:?}", e),
+/// }
+/// ```
+#[allow(clippy::useless_conversion)]
+#[allow(clippy::too_many_arguments)]
+pub fn minimize_with_nevals<F: Func<U>, G: Func<U>, U: Clone>(
+    func: F,
+    xinit: &[f64],
+    bounds: &[(f64, f64)],
+    cons: &[G],
+    args: U,
+    maxeval: usize,
+    rhobeg: RhoBeg,
+    stop_tol: Option<StopTols>,
+) -> (Result<SuccessOutcome, FailOutcome>, i32) {
+    minimize_internal(func, xinit, bounds, cons, args, maxeval, rhobeg, stop_tol)
+}
+
+#[allow(clippy::useless_conversion)]
+#[allow(clippy::too_many_arguments)]
+fn minimize_internal<F: Func<U>, G: Func<U>, U: Clone>(
+    func: F,
+    xinit: &[f64],
+    bounds: &[(f64, f64)],
+    cons: &[G],
+    args: U,
+    maxeval: usize,
+    rhobeg: RhoBeg,
+    stop_tol: Option<StopTols>,
+) -> (Result<SuccessOutcome, FailOutcome>, i32) {
     let fn_cfg = Box::new(NLoptFunctionCfg {
         objective_fn: func,
         user_data: args.clone(),
@@ -326,7 +406,7 @@ pub fn minimize<F: Func<U>, G: Func<U>, U: Clone>(
         let _ = Box::from_raw(fn_cfg_ptr as *mut NLoptFunctionCfg<F, U>);
     };
 
-    match status {
+    let result = match status {
         -1 => Err((FailStatus::Failure, x, minf)),
         -2 => Err((FailStatus::InvalidArgs, x, minf)),
         -3 => Err((FailStatus::OutOfMemory, x, minf)),
@@ -339,7 +419,9 @@ pub fn minimize<F: Func<U>, G: Func<U>, U: Clone>(
         5 => Ok((SuccessStatus::MaxEvalReached, x, minf)),
         6 => Ok((SuccessStatus::MaxTimeReached, x, minf)),
         _ => Err((FailStatus::UnexpectedError, x, minf)),
-    }
+    };
+
+    (result, nevals_p)
 }
 
 #[cfg(test)]
@@ -514,7 +596,7 @@ mod tests {
         cons.push(&cstr1 as &dyn Func<()>);
 
         // x_opt = [0, 0]
-        match minimize(
+        let (result, nfeval) = minimize_with_nevals(
             xsinx,
             &xinit,
             &[(0., 25.)],
@@ -523,16 +605,57 @@ mod tests {
             200,
             RhoBeg::All(0.5),
             None,
-        ) {
+        );
+        match result {
             Ok((_, x, _)) => {
                 //let exp = [18.935];
                 let exp = [17.];
                 for (act, exp) in x.iter().zip(exp.iter()) {
                     assert_abs_diff_eq!(act, exp, epsilon = 1e-2);
                 }
+                // Verify that function evaluations were counted
+                assert!(nfeval > 0, "Function evaluations should be greater than 0");
             }
             Err((status, _, _)) => {
                 panic!("{}", format!("Error status : {:?}", status));
+            }
+        }
+    }
+
+    #[test]
+    fn test_function_evaluation_count() {
+        let xinit = vec![1., 1.];
+        let mut cons: Vec<&dyn Func<()>> = vec![];
+        let cstr1 = |x: &[f64], _user_data: &mut ()| x[0];
+        cons.push(&cstr1 as &dyn Func<()>);
+
+        let (result, nfeval) = minimize_with_nevals(
+            paraboloid,
+            &xinit,
+            &[(-10., 10.), (-10., 10.)],
+            &cons,
+            (),
+            50, // Limited max evals
+            RhoBeg::All(0.5),
+            None,
+        );
+        match result {
+            Ok((_, _, _)) => {
+                // Function evaluation count should be positive and equal or less than maxeval
+                assert!(nfeval > 0, "Function evaluations should be positive");
+                assert!(
+                    nfeval <= 50,
+                    "Function evaluations should not exceed maxeval"
+                );
+                println!("Function evaluations: {}", nfeval);
+            }
+            Err((_, _, _)) => {
+                // Even on failure, we should get evaluation count
+                assert!(
+                    nfeval > 0,
+                    "Function evaluations should be positive even on error"
+                );
+                println!("Function evaluations on error: {}", nfeval);
             }
         }
     }

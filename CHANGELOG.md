@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+* Add `minimize_with_nevals` function that returns both the optimization result and the number of function evaluations performed. The existing `minimize` function remains unchanged for backwards compatibility.
+
 ## [0.8.0] - 2025-10-21
 
 * Gate argmin COBYLA solver behind `argmin` feature.
