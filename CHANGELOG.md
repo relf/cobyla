@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-01-15
+
+* Move the argmin solver, `CobylaSolver`, in its own dedicated crate `cobyla-agrmin`
+
 ## [0.8.0] - 2025-10-21
 
 * Gate argmin COBYLA solver behind `argmin` feature.
