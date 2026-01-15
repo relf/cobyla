@@ -1,6 +1,5 @@
 #![doc = include_str!("../README.md")]
 
-mod cobyla;
 use nlopt_cobyla::nlopt_constraint;
 
 mod nlopt_cobyla;
@@ -14,15 +13,6 @@ use crate::nlopt_cobyla::{
     nlopt_function_raw_callback,
     nlopt_stopping,
 };
-
-#[cfg(feature = "argmin")]
-mod cobyla_solver;
-#[cfg(feature = "argmin")]
-mod cobyla_state;
-#[cfg(feature = "argmin")]
-pub use crate::cobyla_solver::*;
-#[cfg(feature = "argmin")]
-pub use crate::cobyla_state::*;
 
 use std::os::raw::c_void;
 
