@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-05-18
+
+* Fix constraint functions allocation avoiding memory leak
+
 ## [1.0.0] - 2026-01-15
 
 * Move the argmin solver, `CobylaSolver`, in its own dedicated crate `cobyla-argmin`
