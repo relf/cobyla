@@ -343,15 +343,15 @@ mod tests {
     // Second problem (see cobyla.c case 6)
 
     fn raw_paraboloid(
-        _n: libc::c_uint,
-        x: *const libc::c_double,
-        _gradient: *mut libc::c_double,
-        _func_data: *mut libc::c_void,
-    ) -> libc::c_double {
+        _n: ::core::ffi::c_uint,
+        x: *const ::core::ffi::c_double,
+        _gradient: *mut ::core::ffi::c_double,
+        _func_data: *mut ::core::ffi::c_void,
+    ) -> ::core::ffi::c_double {
         unsafe {
             let r1 = *x.offset(0) + 1.0;
             let r2 = *x.offset(1);
-            10.0 * (r1 * r1) + (r2 * r2) as libc::c_double
+            10.0 * (r1 * r1) + (r2 * r2) as ::core::ffi::c_double
         }
     }
 
