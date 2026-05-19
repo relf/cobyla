@@ -1,6 +1,5 @@
 #![allow(
     dead_code,
-    mutable_transmutes,
     non_camel_case_types,
     non_snake_case,
     non_upper_case_globals,
@@ -124,8 +123,8 @@ struct __va_list_tag {
     pub overflow_arg_area: *mut ::core::ffi::c_void,
     pub reg_save_area: *mut ::core::ffi::c_void,
 }
-type size_t = ::core::ffi::c_ulong;
-type __uint32_t = ::core::ffi::c_uint;
+type size_t = usize;
+type __uint32_t = u32;
 type __off_t = ::core::ffi::c_long;
 type __off64_t = ::core::ffi::c_long;
 type __time_t = ::core::ffi::c_long;
@@ -272,47 +271,6 @@ const COBYLA_MSG_INFO: C2RustUnnamed = 3;
 const COBYLA_MSG_ITER: C2RustUnnamed = 2;
 const COBYLA_MSG_EXIT: C2RustUnnamed = 1;
 
-unsafe fn nlopt_time_seed() -> ::core::ffi::c_ulong {
-    // let mut tv = ::core::ffi::timeval {
-    //     tv_sec: 0,
-    //     tv_usec: 0,
-    // };
-    // ::core::ffi::gettimeofday(&mut tv, 0 as *mut ::core::ffi::timezone);
-    //return (tv.tv_sec ^ tv.tv_usec) as ::core::ffi::c_ulong;
-    let start = SystemTime::now();
-    let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Time flies");
-    since_the_epoch.as_millis() as ::core::ffi::c_ulong
-}
-
-unsafe fn nlopt_seconds() -> ::core::ffi::c_double {
-    // static mut start_inited: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
-    // static mut start: ::core::ffi::timeval = ::core::ffi::timeval {
-    //     tv_sec: 0,
-    //     tv_usec: 0,
-    // };
-    // let mut tv: ::core::ffi::timeval = ::core::ffi::timeval {
-    //     tv_sec: 0,
-    //     tv_usec: 0,
-    // };
-    // if start_inited == 0 {
-    //     start_inited = 1 as ::core::ffi::c_int;
-    //     ::core::ffi::gettimeofday(&mut start, 0 as *mut ::core::ffi::timezone);
-    // }
-    // ::core::ffi::gettimeofday(&mut tv, 0 as *mut ::core::ffi::timezone);
-    // return (tv.tv_sec - start.tv_sec) as ::core::ffi::c_double
-    //     + 1.0e-6f64 * (tv.tv_usec - start.tv_usec) as ::core::ffi::c_double;
-    static mut start_inited: bool = false;
-    static mut start: SystemTime = UNIX_EPOCH;
-    if !start_inited {
-        start_inited = true;
-        start = SystemTime::now();
-    }
-    #[allow(static_mut_refs)]
-    start
-        .duration_since(UNIX_EPOCH)
-        .expect("Time flies")
-        .as_secs_f64()
-}
 unsafe fn sc(
     mut x: ::core::ffi::c_double,
     mut smin: ::core::ffi::c_double,
@@ -331,7 +289,7 @@ unsafe fn vector_norm(
     let mut ret: ::core::ffi::c_double = 0 as ::core::ffi::c_int as ::core::ffi::c_double;
     if !scale_min.is_null() && !scale_max.is_null() {
         if !w.is_null() {
-            i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+            i = 0 as ::core::ffi::c_uint;
             while i < n {
                 ret += *w.offset(i as isize)
                     * (sc(
@@ -343,7 +301,7 @@ unsafe fn vector_norm(
                 i = i.wrapping_add(1);
             }
         } else {
-            i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+            i = 0 as ::core::ffi::c_uint;
             while i < n {
                 ret += (sc(
                     *vec.offset(i as isize),
@@ -355,13 +313,13 @@ unsafe fn vector_norm(
             }
         }
     } else if !w.is_null() {
-        i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+        i = 0 as ::core::ffi::c_uint;
         while i < n {
             ret += *w.offset(i as isize) * (*vec.offset(i as isize)).abs();
             i = i.wrapping_add(1);
         }
     } else {
-        i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+        i = 0 as ::core::ffi::c_uint;
         while i < n {
             ret += (*vec.offset(i as isize)).abs();
             i = i.wrapping_add(1);
@@ -381,7 +339,7 @@ unsafe fn diff_norm(
     let mut ret: ::core::ffi::c_double = 0 as ::core::ffi::c_int as ::core::ffi::c_double;
     if !scale_min.is_null() && !scale_max.is_null() {
         if !w.is_null() {
-            i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+            i = 0 as ::core::ffi::c_uint;
             while i < n {
                 ret += *w.offset(i as isize)
                     * (sc(
@@ -397,7 +355,7 @@ unsafe fn diff_norm(
                 i = i.wrapping_add(1);
             }
         } else {
-            i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+            i = 0 as ::core::ffi::c_uint;
             while i < n {
                 ret += (sc(
                     *x.offset(i as isize),
@@ -413,13 +371,13 @@ unsafe fn diff_norm(
             }
         }
     } else if !w.is_null() {
-        i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+        i = 0 as ::core::ffi::c_uint;
         while i < n {
             ret += *w.offset(i as isize) * (*x.offset(i as isize) - *oldx.offset(i as isize)).abs();
             i = i.wrapping_add(1);
         }
     } else {
-        i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+        i = 0 as ::core::ffi::c_uint;
         while i < n {
             ret += (*x.offset(i as isize) - *oldx.offset(i as isize)).abs();
             i = i.wrapping_add(1);
@@ -468,15 +426,15 @@ unsafe fn nlopt_stop_x(
         x,
         oldx,
         (*s).x_weights,
-        0 as *const ::core::ffi::c_double,
-        0 as *const ::core::ffi::c_double,
+        ::core::ptr::null::<::core::ffi::c_double>(),
+        ::core::ptr::null::<::core::ffi::c_double>(),
     ) < (*s).xtol_rel
         * vector_norm(
             (*s).n,
             x,
             (*s).x_weights,
-            0 as *const ::core::ffi::c_double,
-            0 as *const ::core::ffi::c_double,
+            ::core::ptr::null::<::core::ffi::c_double>(),
+            ::core::ptr::null::<::core::ffi::c_double>(),
         )
     {
         return 1 as ::core::ffi::c_int;
@@ -484,7 +442,7 @@ unsafe fn nlopt_stop_x(
     if ((*s).xtol_abs).is_null() {
         return 0 as ::core::ffi::c_int;
     }
-    i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+    i = 0 as ::core::ffi::c_uint;
     while i < (*s).n {
         if (*x.offset(i as isize) - *oldx.offset(i as isize)).abs()
             >= *((*s).xtol_abs).offset(i as isize)
@@ -506,23 +464,23 @@ unsafe fn nlopt_stop_dx(
         (*s).n,
         dx,
         (*s).x_weights,
-        0 as *const ::core::ffi::c_double,
-        0 as *const ::core::ffi::c_double,
+        ::core::ptr::null::<::core::ffi::c_double>(),
+        ::core::ptr::null::<::core::ffi::c_double>(),
     ) < (*s).xtol_rel
         * vector_norm(
             (*s).n,
             x,
             (*s).x_weights,
-            0 as *const ::core::ffi::c_double,
-            0 as *const ::core::ffi::c_double,
+            ::core::ptr::null::<::core::ffi::c_double>(),
+            ::core::ptr::null::<::core::ffi::c_double>(),
         )
     {
         return 1 as ::core::ffi::c_int;
     }
-    if ((*s).xtol_abs).is_null() {
+    if (*s).xtol_abs.is_null() {
         return 0 as ::core::ffi::c_int;
     }
-    i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+    i = 0 as ::core::ffi::c_uint;
     while i < (*s).n {
         if (*dx.offset(i as isize)).abs() >= *((*s).xtol_abs).offset(i as isize) {
             return 0 as ::core::ffi::c_int;
@@ -545,10 +503,10 @@ unsafe fn nlopt_stop_xs(
     {
         return 1 as ::core::ffi::c_int;
     }
-    if ((*s).xtol_abs).is_null() {
+    if (*s).xtol_abs.is_null() {
         return 0 as ::core::ffi::c_int;
     }
-    i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+    i = 0 as ::core::ffi::c_uint;
     while i < (*s).n {
         if (sc(
             *xs.offset(i as isize),
@@ -569,30 +527,7 @@ unsafe fn nlopt_stop_xs(
     return 1 as ::core::ffi::c_int;
 }
 
-unsafe fn nlopt_isinf(mut x: ::core::ffi::c_double) -> ::core::ffi::c_int {
-    return ((x).abs() >= f64::INFINITY * 0.99f64
-        || if x.is_infinite() {
-            if x.is_sign_positive() { 1 } else { -1 }
-        } else {
-            0
-        } != 0) as ::core::ffi::c_int;
-}
 
-unsafe fn nlopt_isfinite(mut x: ::core::ffi::c_double) -> ::core::ffi::c_int {
-    return (x.abs() <= 1.7976931348623157e+308f64) as ::core::ffi::c_int;
-}
-
-unsafe fn nlopt_istiny(mut x: ::core::ffi::c_double) -> ::core::ffi::c_int {
-    if x == 0.0f64 {
-        return 1 as ::core::ffi::c_int;
-    } else {
-        return (x.abs() < 2.2250738585072014e-308f64) as ::core::ffi::c_int;
-    };
-}
-
-unsafe fn nlopt_isnan(mut x: ::core::ffi::c_double) -> ::core::ffi::c_int {
-    return x.is_nan() as i32;
-}
 
 unsafe fn nlopt_stop_evals(mut s: *const nlopt_stopping) -> ::core::ffi::c_int {
     return ((*s).maxeval > 0 as ::core::ffi::c_int && *(*s).nevals_p >= (*s).maxeval) as ::core::ffi::c_int;
@@ -644,17 +579,13 @@ unsafe fn nlopt_stop_forced(mut stop: *const nlopt_stopping) -> ::core::ffi::c_i
 //     return p;
 // }
 
-unsafe fn nlopt_stop_msg(mut s: *mut nlopt_stopping, msg: &str) {
-    (*s).stop_msg = msg.to_string();
-}
-
 unsafe fn nlopt_count_constraints(
     mut p: ::core::ffi::c_uint,
     mut c: *const nlopt_constraint,
 ) -> ::core::ffi::c_uint {
     let mut i: ::core::ffi::c_uint = 0;
-    let mut count: ::core::ffi::c_uint = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
-    i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+    let mut count: ::core::ffi::c_uint = 0 as ::core::ffi::c_uint;
+    i = 0 as ::core::ffi::c_uint;
     while i < p {
         count = count.wrapping_add((*c.offset(i as isize)).m);
         i = i.wrapping_add(1);
@@ -667,8 +598,8 @@ unsafe fn nlopt_max_constraint_dim(
     mut c: *const nlopt_constraint,
 ) -> ::core::ffi::c_uint {
     let mut i: ::core::ffi::c_uint = 0;
-    let mut max_dim: ::core::ffi::c_uint = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
-    i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+    let mut max_dim: ::core::ffi::c_uint = 0 as ::core::ffi::c_uint;
+    i = 0 as ::core::ffi::c_uint;
     while i < p {
         if (*c.offset(i as isize)).m > max_dim {
             max_dim = (*c.offset(i as isize)).m;
@@ -685,7 +616,7 @@ unsafe fn nlopt_eval_constraint<U>(
     mut n: ::core::ffi::c_uint,
     mut x: *const ::core::ffi::c_double,
 ) {
-    if ((*c).f).is_some() {
+    if (*c).f.is_some() {
         *result.offset(0 as ::core::ffi::c_int as isize) =
         // PATCH Weird bug ((*c).f).expect("non-null function pointer") calls the objective function!!!
         // even if (*c), nlopt_constraint object was correctly built with a nlopt_constraint_raw_callback!!! 
@@ -695,11 +626,70 @@ unsafe fn nlopt_eval_constraint<U>(
         // relf: Take the opposite to manage cstr as being nonnegative in the end like the original cobyla
         *result.offset(0 as ::core::ffi::c_int as isize) = -*result.offset(0 as ::core::ffi::c_int as isize)
     } else {
-        ((*c).mf).expect("non-null function pointer")((*c).m, result, n, x, grad, (*c).f_data);
+        (*c).mf.expect("non-null function pointer")((*c).m, result, n, x, grad, (*c).f_data);
+    };
+}
+// #[no_mangle]
+// pub unsafe extern "C" fn nlopt_vsprintf(
+//     mut p: *mut ::core::ffi::c_char,
+//     mut format: *const ::core::ffi::c_char,
+//     mut ap: ::core::ffi::VaList,
+// ) -> *mut ::core::ffi::c_char {
+//     let mut len: size_t = strlen(format).wrapping_add(128 as size_t);
+//     let mut ret: ::core::ffi::c_int = 0;
+//     p = realloc(p as *mut ::core::ffi::c_void, len) as *mut ::core::ffi::c_char;
+//     if p.is_null() {
+//         abort();
+//     }
+//     loop {
+//         ret = vsnprintf(p, len, format, ap.as_va_list());
+//         if !(ret < 0 as ::core::ffi::c_int || ret as size_t >= len) {
+//             break;
+//         }
+//         len = if ret >= 0 as ::core::ffi::c_int {
+//             (ret + 1 as ::core::ffi::c_int) as size_t
+//         } else {
+//             len.wrapping_mul(3 as size_t) >> 1 as ::core::ffi::c_int
+//         };
+//         p = realloc(p as *mut ::core::ffi::c_void, len) as *mut ::core::ffi::c_char;
+//         if p.is_null() {
+//             abort();
+//         }
+//     }
+//     return p;
+// }
+
+
+unsafe fn nlopt_stop_msg(mut s: *mut nlopt_stopping, msg: &str) {
+    (*s).stop_msg = msg.to_string();
+}
+
+unsafe fn nlopt_isinf(mut x: ::core::ffi::c_double) -> ::core::ffi::c_int {
+    return ((x).abs() >= f64::INFINITY * 0.99f64
+        || if x.is_infinite() {
+            if x.is_sign_positive() { 1 } else { -1 }
+        } else {
+            0
+        } != 0) as ::core::ffi::c_int;
+}
+
+unsafe fn nlopt_isfinite(mut x: ::core::ffi::c_double) -> ::core::ffi::c_int {
+    return (x.abs() <= 1.7976931348623157e+308f64) as ::core::ffi::c_int;
+}
+
+unsafe fn nlopt_istiny(mut x: ::core::ffi::c_double) -> ::core::ffi::c_int {
+    if x == 0.0f64 {
+        return 1 as ::core::ffi::c_int;
+    } else {
+        return (x.abs() < 2.2250738585072014e-308f64) as ::core::ffi::c_int;
     };
 }
 
-unsafe fn nlopt_compute_rescaling(
+unsafe fn nlopt_isnan(mut x: ::core::ffi::c_double) -> ::core::ffi::c_int {
+    return x.is_nan() as i32;
+}
+
+pub unsafe fn nlopt_compute_rescaling(
     mut n: ::core::ffi::c_uint,
     mut dx: *const ::core::ffi::c_double,
 ) -> *mut ::core::ffi::c_double {
@@ -713,25 +703,24 @@ unsafe fn nlopt_compute_rescaling(
 
     let mut i: ::core::ffi::c_uint = 0;
     if s.is_null() {
-        return 0 as *mut ::core::ffi::c_double;
+        return ::core::ptr::null_mut::<::core::ffi::c_double>();
     }
-    i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+    i = 0 as ::core::ffi::c_uint;
     while i < n {
         *s.offset(i as isize) = 1.0f64;
         i = i.wrapping_add(1);
     }
-    if n == 1 as ::core::ffi::c_int as ::core::ffi::c_uint {
+    if n == 1 as ::core::ffi::c_uint {
         return s;
     }
-    i = 1 as ::core::ffi::c_int as ::core::ffi::c_uint;
+    i = 1 as ::core::ffi::c_uint;
     while i < n
-        && *dx.offset(i as isize)
-            == *dx.offset(i.wrapping_sub(1 as ::core::ffi::c_int as ::core::ffi::c_uint) as isize)
+        && *dx.offset(i as isize) == *dx.offset(i.wrapping_sub(1 as ::core::ffi::c_uint) as isize)
     {
         i = i.wrapping_add(1);
     }
     if i < n {
-        i = 1 as ::core::ffi::c_int as ::core::ffi::c_uint;
+        i = 1 as ::core::ffi::c_uint;
         while i < n {
             *s.offset(i as isize) = *dx.offset(i as isize) / *dx.offset(0 as ::core::ffi::c_int as isize);
             i = i.wrapping_add(1);
@@ -748,13 +737,13 @@ unsafe fn nlopt_rescale(
 ) {
     let mut i: ::core::ffi::c_uint = 0;
     if s.is_null() {
-        i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+        i = 0 as ::core::ffi::c_uint;
         while i < n {
             *xs.offset(i as isize) = *x.offset(i as isize);
             i = i.wrapping_add(1);
         }
     } else {
-        i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+        i = 0 as ::core::ffi::c_uint;
         while i < n {
             *xs.offset(i as isize) = *x.offset(i as isize) / *s.offset(i as isize);
             i = i.wrapping_add(1);
@@ -770,13 +759,13 @@ unsafe fn nlopt_unscale(
 ) {
     let mut i: ::core::ffi::c_uint = 0;
     if s.is_null() {
-        i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+        i = 0 as ::core::ffi::c_uint;
         while i < n {
             *xs.offset(i as isize) = *x.offset(i as isize);
             i = i.wrapping_add(1);
         }
     } else {
-        i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+        i = 0 as ::core::ffi::c_uint;
         while i < n {
             *xs.offset(i as isize) = *x.offset(i as isize) * *s.offset(i as isize);
             i = i.wrapping_add(1);
@@ -798,7 +787,7 @@ unsafe fn nlopt_new_rescaled(
     std::mem::forget(space);
 
     if xs.is_null() {
-        return 0 as *mut ::core::ffi::c_double;
+        return ::core::ptr::null_mut::<::core::ffi::c_double>();
     }
     nlopt_rescale(n, s, x, xs);
     return xs;
@@ -810,7 +799,7 @@ unsafe fn nlopt_reorder_bounds(
     mut ub: *mut ::core::ffi::c_double,
 ) {
     let mut i: ::core::ffi::c_uint = 0;
-    i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+    i = 0 as ::core::ffi::c_uint;
     while i < n {
         if *lb.offset(i as isize) > *ub.offset(i as isize) {
             let mut t: ::core::ffi::c_double = *lb.offset(i as isize);
@@ -820,6 +809,48 @@ unsafe fn nlopt_reorder_bounds(
         i = i.wrapping_add(1);
     }
 }
+unsafe fn nlopt_time_seed() -> ::core::ffi::c_ulong {
+    // let mut tv = ::core::ffi::timeval {
+    //     tv_sec: 0,
+    //     tv_usec: 0,
+    // };
+    // ::core::ffi::gettimeofday(&mut tv, 0 as *mut ::core::ffi::timezone);
+    //return (tv.tv_sec ^ tv.tv_usec) as ::core::ffi::c_ulong;
+    let start = SystemTime::now();
+    let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Time flies");
+    since_the_epoch.as_millis() as ::core::ffi::c_ulong
+}
+
+unsafe fn nlopt_seconds() -> ::core::ffi::c_double {
+    // static mut start_inited: ::core::ffi::c_int = 0 as ::core::ffi::c_int;
+    // static mut start: ::core::ffi::timeval = ::core::ffi::timeval {
+    //     tv_sec: 0,
+    //     tv_usec: 0,
+    // };
+    // let mut tv: ::core::ffi::timeval = ::core::ffi::timeval {
+    //     tv_sec: 0,
+    //     tv_usec: 0,
+    // };
+    // if start_inited == 0 {
+    //     start_inited = 1 as ::core::ffi::c_int;
+    //     ::core::ffi::gettimeofday(&mut start, 0 as *mut ::core::ffi::timezone);
+    // }
+    // ::core::ffi::gettimeofday(&mut tv, 0 as *mut ::core::ffi::timezone);
+    // return (tv.tv_sec - start.tv_sec) as ::core::ffi::c_double
+    //     + 1.0e-6f64 * (tv.tv_usec - start.tv_usec) as ::core::ffi::c_double;
+    static mut start_inited: bool = false;
+    static mut start: SystemTime = UNIX_EPOCH;
+    if !start_inited {
+        start_inited = true;
+        start = SystemTime::now();
+    }
+    #[allow(static_mut_refs)]
+    start
+        .duration_since(UNIX_EPOCH)
+        .expect("Time flies")
+        .as_secs_f64()
+}
+
 unsafe fn func_wrap<U>(
     mut ni: ::core::ffi::c_int,
     mut _mi: ::core::ffi::c_int,
@@ -835,7 +866,7 @@ unsafe fn func_wrap<U>(
     let mut xtmp: *mut ::core::ffi::c_double = (*s).xtmp;
     let mut lb: *const ::core::ffi::c_double = (*s).lb;
     let mut ub: *const ::core::ffi::c_double = (*s).ub;
-    j = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+    j = 0 as ::core::ffi::c_uint;
     while j < n {
         if *x.offset(j as isize) < *lb.offset(j as isize) {
             *xtmp.offset(j as isize) = *lb.offset(j as isize);
@@ -847,72 +878,70 @@ unsafe fn func_wrap<U>(
         j = j.wrapping_add(1);
     }
     nlopt_unscale(n, (*s).scale, xtmp, xtmp);
-    *f = ((*s).f).expect("non-null function pointer")(
+    *f = (*s).f.expect("non-null function pointer")(
         n,
         xtmp,
-        0 as *mut ::core::ffi::c_double,
+        ::core::ptr::null_mut::<::core::ffi::c_double>(),
         (*s).f_data,
     );
     if nlopt_stop_forced((*s).stop) != 0 {
         return 1 as ::core::ffi::c_int;
     }
-    i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
-    j = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+    i = 0 as ::core::ffi::c_uint;
+    j = 0 as ::core::ffi::c_uint;
     while j < (*s).m_orig {
         nlopt_eval_constraint::<U>(
             con.offset(i as isize),
-            0 as *mut ::core::ffi::c_double,
-            ((*s).fc).offset(j as isize),
+            ::core::ptr::null_mut::<::core::ffi::c_double>(),
+            (*s).fc.offset(j as isize),
             n,
             xtmp,
         );
         if nlopt_stop_forced((*s).stop) != 0 {
             return 1 as ::core::ffi::c_int;
         }
-        k = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
-        while k < (*((*s).fc).offset(j as isize)).m {
+        k = 0 as ::core::ffi::c_uint;
+        while k < (*(*s).fc.offset(j as isize)).m {
             *con.offset(i.wrapping_add(k) as isize) = -*con.offset(i.wrapping_add(k) as isize);
             k = k.wrapping_add(1);
         }
-        i = i.wrapping_add((*((*s).fc).offset(j as isize)).m);
+        i = i.wrapping_add((*(*s).fc.offset(j as isize)).m);
         j = j.wrapping_add(1);
     }
-    j = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+    j = 0 as ::core::ffi::c_uint;
     while j < (*s).p {
         nlopt_eval_constraint::<U>(
             con.offset(i as isize),
-            0 as *mut ::core::ffi::c_double,
-            ((*s).h).offset(j as isize),
+            ::core::ptr::null_mut::<::core::ffi::c_double>(),
+            (*s).h.offset(j as isize),
             n,
             xtmp,
         );
         if nlopt_stop_forced((*s).stop) != 0 {
             return 1 as ::core::ffi::c_int;
         }
-        k = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
-        while k < (*((*s).h).offset(j as isize)).m {
+        k = 0 as ::core::ffi::c_uint;
+        while k < (*(*s).h.offset(j as isize)).m {
             *con.offset(
-                i.wrapping_add((*((*s).h).offset(j as isize)).m)
+                i.wrapping_add((*(*s).h.offset(j as isize)).m)
                     .wrapping_add(k) as isize,
             ) = -*con.offset(i.wrapping_add(k) as isize);
             k = k.wrapping_add(1);
         }
-        i = i.wrapping_add(
-            (2 as ::core::ffi::c_int as ::core::ffi::c_uint).wrapping_mul((*((*s).h).offset(j as isize)).m),
-        );
+        i = i.wrapping_add((2 as ::core::ffi::c_uint).wrapping_mul((*(*s).h.offset(j as isize)).m));
         j = j.wrapping_add(1);
     }
-    j = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+    j = 0 as ::core::ffi::c_uint;
     while j < n {
         if nlopt_isinf(*lb.offset(j as isize)) == 0 {
-            let fresh1 = i;
+            let fresh0 = i;
             i = i.wrapping_add(1);
-            *con.offset(fresh1 as isize) = *x.offset(j as isize) - *lb.offset(j as isize);
+            *con.offset(fresh0 as isize) = *x.offset(j as isize) - *lb.offset(j as isize);
         }
         if nlopt_isinf(*ub.offset(j as isize)) == 0 {
-            let fresh2 = i;
+            let fresh1 = i;
             i = i.wrapping_add(1);
-            *con.offset(fresh2 as isize) = *ub.offset(j as isize) - *x.offset(j as isize);
+            *con.offset(fresh1 as isize) = *ub.offset(j as isize) - *x.offset(j as isize);
         }
         j = j.wrapping_add(1);
     }
@@ -938,17 +967,17 @@ pub(crate) unsafe fn cobyla_minimize<U>(
     let mut j: ::core::ffi::c_uint = 0;
     let mut s: func_wrap_state = func_wrap_state {
         f: None,
-        f_data: 0 as *mut ::core::ffi::c_void,
+        f_data: ::core::ptr::null_mut::<::core::ffi::c_void>(),
         m_orig: 0,
-        fc: 0 as *mut nlopt_constraint,
+        fc: ::core::ptr::null_mut::<nlopt_constraint>(),
         p: 0,
-        h: 0 as *mut nlopt_constraint,
-        xtmp: 0 as *mut ::core::ffi::c_double,
-        lb: 0 as *mut ::core::ffi::c_double,
-        ub: 0 as *mut ::core::ffi::c_double,
-        con_tol: 0 as *mut ::core::ffi::c_double,
-        scale: 0 as *mut ::core::ffi::c_double,
-        stop: 0 as *mut nlopt_stopping,
+        h: ::core::ptr::null_mut::<nlopt_constraint>(),
+        xtmp: ::core::ptr::null_mut::<::core::ffi::c_double>(),
+        lb: ::core::ptr::null_mut::<::core::ffi::c_double>(),
+        ub: ::core::ptr::null_mut::<::core::ffi::c_double>(),
+        con_tol: ::core::ptr::null_mut::<::core::ffi::c_double>(),
+        scale: ::core::ptr::null_mut::<::core::ffi::c_double>(),
+        stop: ::core::ptr::null_mut::<nlopt_stopping>(),
     };
     let mut ret: nlopt_result = 0 as nlopt_result;
     let mut rhobeg: ::core::ffi::c_double = 0.;
@@ -960,23 +989,23 @@ pub(crate) unsafe fn cobyla_minimize<U>(
     s.p = p;
     s.h = h;
     s.stop = stop;
-    s.scale = 0 as *mut ::core::ffi::c_double;
+    s.scale = ::core::ptr::null_mut::<::core::ffi::c_double>();
     s.con_tol = s.scale;
     s.xtmp = s.con_tol;
     s.ub = s.xtmp;
     s.lb = s.ub;
     s.scale = nlopt_compute_rescaling(n, dx);
-    if (s.scale).is_null() {
+    if s.scale.is_null() {
         ret = NLOPT_OUT_OF_MEMORY;
     } else {
-        j = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+        j = 0 as ::core::ffi::c_uint;
         loop {
             if !(j < n) {
-                current_block = 15652330335145281839;
+                current_block = 12800627514080957624;
                 break;
             }
-            if *(s.scale).offset(j as isize) == 0 as ::core::ffi::c_int as ::core::ffi::c_double
-                || nlopt_isfinite(*(s.scale).offset(j as isize)) == 0
+            if *s.scale.offset(j as isize) == 0 as ::core::ffi::c_int as ::core::ffi::c_double
+                || nlopt_isfinite(*s.scale.offset(j as isize)) == 0
             {
                 nlopt_stop_msg(
                     stop,
@@ -987,21 +1016,21 @@ pub(crate) unsafe fn cobyla_minimize<U>(
                     ),
                 );
                 ret = NLOPT_INVALID_ARGS;
-                current_block = 762786280471819104;
+                current_block = 2538622867173152133;
                 break;
             } else {
                 j = j.wrapping_add(1);
             }
         }
         match current_block {
-            762786280471819104 => {}
+            2538622867173152133 => {}
             _ => {
                 s.lb = nlopt_new_rescaled(n, s.scale, lb);
-                if (s.lb).is_null() {
+                if s.lb.is_null() {
                     ret = NLOPT_OUT_OF_MEMORY;
                 } else {
                     s.ub = nlopt_new_rescaled(n, s.scale, ub);
-                    if (s.ub).is_null() {
+                    if s.ub.is_null() {
                         ret = NLOPT_OUT_OF_MEMORY;
                     } else {
                         nlopt_reorder_bounds(n, s.lb, s.ub);
@@ -1022,8 +1051,8 @@ pub(crate) unsafe fn cobyla_minimize<U>(
                                 / *(s.scale).offset(0 as ::core::ffi::c_int as isize))
                             .abs();
                             rhoend = (*stop).xtol_rel * rhobeg;
-                            if !((*stop).xtol_abs).is_null() {
-                                j = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+                            if !(*stop).xtol_abs.is_null() {
+                                j = 0 as ::core::ffi::c_uint;
                                 while j < n {
                                     if rhoend
                                         < *((*stop).xtol_abs).offset(j as isize)
@@ -1035,11 +1064,11 @@ pub(crate) unsafe fn cobyla_minimize<U>(
                                     j = j.wrapping_add(1);
                                 }
                             }
-                            m = (nlopt_count_constraints(m, fc)).wrapping_add(
-                                (2 as ::core::ffi::c_int as ::core::ffi::c_uint)
+                            m = nlopt_count_constraints(m, fc).wrapping_add(
+                                (2 as ::core::ffi::c_uint)
                                     .wrapping_mul(nlopt_count_constraints(p, h)),
                             );
-                            j = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+                            j = 0 as ::core::ffi::c_uint;
                             while j < n {
                                 if nlopt_isinf(*lb.offset(j as isize)) == 0 {
                                     m = m.wrapping_add(1);
@@ -1064,43 +1093,43 @@ pub(crate) unsafe fn cobyla_minimize<U>(
                             if m != 0 && (s.con_tol).is_null() {
                                 ret = NLOPT_OUT_OF_MEMORY;
                             } else {
-                                j = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+                                j = 0 as ::core::ffi::c_uint;
                                 while j < m {
-                                    *(s.con_tol).offset(j as isize) =
+                                    *s.con_tol.offset(j as isize) =
                                         0 as ::core::ffi::c_int as ::core::ffi::c_double;
                                     j = j.wrapping_add(1);
                                 }
-                                i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+                                i = 0 as ::core::ffi::c_uint;
                                 j = i;
                                 while i < s.m_orig {
                                     let mut ji: ::core::ffi::c_uint = j;
                                     let mut jnext: ::core::ffi::c_uint =
                                         j.wrapping_add((*fc.offset(i as isize)).m);
                                     while j < jnext {
-                                        *(s.con_tol).offset(j as isize) =
-                                            *((*fc.offset(i as isize)).tol)
-                                                .offset(j.wrapping_sub(ji) as isize);
+                                        *s.con_tol.offset(j as isize) = *(*fc.offset(i as isize))
+                                            .tol
+                                            .offset(j.wrapping_sub(ji) as isize);
                                         j = j.wrapping_add(1);
                                     }
                                     i = i.wrapping_add(1);
                                 }
-                                i = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+                                i = 0 as ::core::ffi::c_uint;
                                 while i < s.p {
                                     let mut ji_0: ::core::ffi::c_uint = j;
                                     let mut jnext_0: ::core::ffi::c_uint =
                                         j.wrapping_add((*h.offset(i as isize)).m);
                                     while j < jnext_0 {
-                                        *(s.con_tol).offset(j as isize) =
-                                            *((*h.offset(i as isize)).tol)
-                                                .offset(j.wrapping_sub(ji_0) as isize);
+                                        *s.con_tol.offset(j as isize) = *(*h.offset(i as isize))
+                                            .tol
+                                            .offset(j.wrapping_sub(ji_0) as isize);
                                         j = j.wrapping_add(1);
                                     }
                                     ji_0 = j;
                                     jnext_0 = j.wrapping_add((*h.offset(i as isize)).m);
                                     while j < jnext_0 {
-                                        *(s.con_tol).offset(j as isize) =
-                                            *((*h.offset(i as isize)).tol)
-                                                .offset(j.wrapping_sub(ji_0) as isize);
+                                        *s.con_tol.offset(j as isize) = *(*h.offset(i as isize))
+                                            .tol
+                                            .offset(j.wrapping_sub(ji_0) as isize);
                                         j = j.wrapping_add(1);
                                     }
                                     i = i.wrapping_add(1);
@@ -1129,10 +1158,10 @@ pub(crate) unsafe fn cobyla_minimize<U>(
                                             )
                                                 -> ::core::ffi::c_int,
                                     ),
-                                    &mut s,
+                                    &raw mut s,
                                 );
                                 nlopt_unscale(n, s.scale, x, x);
-                                j = 0 as ::core::ffi::c_int as ::core::ffi::c_uint;
+                                j = 0 as ::core::ffi::c_uint;
                                 while j < n {
                                     if *x.offset(j as isize) < *lb.offset(j as isize) {
                                         *x.offset(j as isize) = *lb.offset(j as isize);
@@ -1205,8 +1234,8 @@ unsafe fn cobyla(
     let mut ia: ::core::ffi::c_int = 0;
     let mut idx: ::core::ffi::c_int = 0;
     let mut mpp: ::core::ffi::c_int = 0;
-    let mut _iact: *mut ::core::ffi::c_int = 0 as *mut ::core::ffi::c_int;
-    let mut _w: *mut ::core::ffi::c_double = 0 as *mut ::core::ffi::c_double;
+    let mut _iact: *mut ::core::ffi::c_int = ::core::ptr::null_mut::<::core::ffi::c_int>();
+    let mut _w: *mut ::core::ffi::c_double = ::core::ptr::null_mut::<::core::ffi::c_double>();
     let mut rc: nlopt_result = 0 as nlopt_result;
     *(*stop).nevals_p = 0 as ::core::ffi::c_int;
     if n == 0 as ::core::ffi::c_int {
