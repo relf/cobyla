@@ -1,7 +1,7 @@
 [
-{
-  "directory": "/home/rlafage/workspace/cobyla/build",
-  "command": "/usr/bin/cc  -I/home/rlafage/workspace/cobyla/cobyla    -o CMakeFiles/cobyla.dir/cobyla.c.o   -c /home/rlafage/workspace/cobyla/cobyla/cobyla.c",
-  "file": "/home/rlafage/workspace/cobyla/cobyla/cobyla.c"
-}
+  {
+    "directory": "/tmp_user/juno/rlafage/workspace/cobyla/build",
+    "command": "/usr/bin/cc  -I/tmp_user/juno/rlafage/workspace/cobyla/cobyla/nlopt  -o CMakeFiles/cobyla.dir/cobyla.c.o -c /tmp_user/juno/rlafage/workspace/cobyla/cobyla/nlopt/cobyla.c",
+    "file": "/tmp_user/juno/rlafage/workspace/cobyla/cobyla/nlopt/cobyla.c"
+  }
 ]

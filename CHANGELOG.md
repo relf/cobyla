@@ -1,6 +1,9 @@
 # Changelog
 
-## [Unreleased]
+## [1.0.2-rc.1] - 2026-05-19
+
+* Regenerate nlopt_cobyla.rs code from nlopt 2.10.1 cobyla C code with [c2rust 0.22.1](https://github.com/immunant/c2rust).
+  Note: previous manual edits where re-introduced and libc dependency is removed
 
 ## [1.0.1] - 2026-05-18
 
@@ -53,7 +56,7 @@ COBYLA is now also implemented as an argmin::Solver to benefit from [argmin fram
 
 ## [0.2.0] - 2023-01-09
 
-COBYLA C code has been translated to Rust using [c2rust](https://github.com/immunant/c2rust) then manually edited.
+COBYLA C code has been translated to Rust using [c2rust 0.16](https://github.com/immunant/c2rust) then manually edited.
 
 ## [0.1.0] - 2022-05-06
 
