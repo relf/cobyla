@@ -220,7 +220,7 @@ pub fn minimize<F: Func<U>, G: Func<U>, U: Clone>(
             f: Some(nlopt_constraint_raw_callback::<F, U>),
             pre: None,
             mf: None,
-            // We can take a pointer to the constriant data as the
+            // We can take a pointer to the constraint data as the
             // vec is not modified after this point.
             f_data: c as *const _ as *mut c_void,
             tol: &mut cstr_tol,

@@ -41,8 +41,6 @@ pub(crate) fn nlopt_function_raw_callback<F: Func<T>, T>(
     // recover FunctionCfg object from supplied params and call
     let f = unsafe { &mut *(params as *mut NLoptFunctionCfg<F, T>) };
     let res = (f.objective_fn)(argument, &mut f.user_data);
-    #[allow(forgetting_references)]
-    std::mem::forget(f);
     res
 }
 
