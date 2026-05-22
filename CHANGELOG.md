@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.2-rc.1] - 2026-05-19
+## [1.0.2] - 2026-05-26
 
 * Regenerate nlopt_cobyla.rs code from nlopt 2.10.1 cobyla C code with [c2rust 0.22.1](https://github.com/immunant/c2rust).
   Note: previous manual edits where re-introduced and libc dependency is removed
