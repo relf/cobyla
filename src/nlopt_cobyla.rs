@@ -695,9 +695,8 @@ pub unsafe fn nlopt_compute_rescaling(
     //     (::std::mem::size_of::<::core::ffi::c_double>() as ::core::ffi::c_ulong).wrapping_mul(n as ::core::ffi::c_ulong),
     // ) as *mut ::core::ffi::c_double;
 
-    let mut space: Box<Vec<::core::ffi::c_double>> = Box::new(vec![0.; usize::try_from(n).unwrap()]);
-    let s = space.as_mut_ptr() as *mut ::core::ffi::c_double;
-    std::mem::forget(space);
+    let space = vec![0.; usize::try_from(n).unwrap()].into_boxed_slice();
+    let s = Box::into_raw(space) as *mut ::core::ffi::c_double;
 
     let mut i: ::core::ffi::c_uint = 0;
     if s.is_null() {
@@ -780,9 +779,8 @@ unsafe fn nlopt_new_rescaled(
     //     (::std::mem::size_of::<::core::ffi::c_double>() as ::core::ffi::c_ulong).wrapping_mul(n as ::core::ffi::c_ulong),
     // ) as *mut ::core::ffi::c_double;
 
-    let mut space: Box<Vec<::core::ffi::c_double>> = Box::new(vec![0.; usize::try_from(n).unwrap()]);
-    let xs = space.as_mut_ptr() as *mut ::core::ffi::c_double;
-    std::mem::forget(space);
+    let space = vec![0.; usize::try_from(n).unwrap()].into_boxed_slice();
+    let xs = Box::into_raw(space) as *mut ::core::ffi::c_double;
 
     if xs.is_null() {
         return ::core::ptr::null_mut::<::core::ffi::c_double>();
@@ -1037,10 +1035,9 @@ pub(crate) unsafe fn cobyla_minimize<U>(
                         //         .wrapping_mul(n as ::core::ffi::c_ulong),
                         // ) as *mut ::core::ffi::c_double;
 
-                        let mut space: Box<Vec<::core::ffi::c_double>> =
-                            Box::new(vec![0.; usize::try_from(n).unwrap()]);
-                        s.xtmp = space.as_mut_ptr() as *mut ::core::ffi::c_double;
-                        std::mem::forget(space);
+                        let mut space: Box<[::core::ffi::c_double]> =
+                            vec![0.; usize::try_from(n).unwrap()].into_boxed_slice();
+                        s.xtmp = Box::into_raw(space) as *mut ::core::ffi::c_double;
 
                         if (s.xtmp).is_null() {
                             ret = NLOPT_OUT_OF_MEMORY;
@@ -1082,10 +1079,9 @@ pub(crate) unsafe fn cobyla_minimize<U>(
                             // ) as *mut ::core::ffi::c_double;
 
                             if m > 0 {
-                                let mut space: Box<Vec<::core::ffi::c_double>> =
-                                    Box::new(vec![0.; usize::try_from(m).unwrap()]);
-                                s.con_tol = space.as_mut_ptr() as *mut ::core::ffi::c_double;
-                                std::mem::forget(space);
+                                let mut space: Box<[::core::ffi::c_double]> =
+                                    vec![0.; usize::try_from(m).unwrap()].into_boxed_slice();
+                                s.con_tol = Box::into_raw(space) as *mut ::core::ffi::c_double;
                             }
 
                             if m != 0 && (s.con_tol).is_null() {
@@ -1183,15 +1179,25 @@ pub(crate) unsafe fn cobyla_minimize<U>(
     // free(s.scale as *mut ::core::ffi::c_void);
 
     if m > 0 {
-        let _ = Box::from_raw(s.con_tol);
+        free(s.con_tol, m);
     }
-    let _ = Box::from_raw(s.xtmp);
-    let _ = Box::from_raw(s.ub);
-    let _ = Box::from_raw(s.lb);
-    let _ = Box::from_raw(s.scale);
+    free(s.xtmp, n);
+    free(s.ub, n);
+    free(s.lb, n);
+    free(s.scale, n);
 
     return ret;
 }
+
+unsafe fn free(mut p: *mut ::core::ffi::c_double, n: ::core::ffi::c_uint) {
+    if !p.is_null() {
+        drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(
+            p,
+            n as usize,
+        )));
+    }
+}
+
 unsafe fn lcg_rand(mut seed: *mut uint32_t) -> uint32_t {
     *seed = (*seed)
         .wrapping_mul(1103515245 as ::core::ffi::c_int as ::core::ffi::c_uint)
@@ -1258,10 +1264,8 @@ unsafe fn cobyla(
     let space_size = n * (3 as ::core::ffi::c_int * n + 2 as ::core::ffi::c_int * m + 11 as ::core::ffi::c_int)
         + 4 as ::core::ffi::c_int * m
         + 6 as ::core::ffi::c_int;
-    let mut space: Box<Vec<::core::ffi::c_double>> =
-        Box::new(vec![0.; usize::try_from(space_size).unwrap()]);
+    let mut space: Vec<::core::ffi::c_double> = vec![0.; usize::try_from(space_size).unwrap()];
     let mut w = space.as_mut_ptr() as *mut ::core::ffi::c_double;
-    std::mem::forget(space);
 
     if w.is_null() {
         if iprint >= 1 as ::core::ffi::c_int {
@@ -1275,17 +1279,14 @@ unsafe fn cobyla(
     // ) as *mut ::core::ffi::c_int;
 
     let space_size = m + 1;
-    let mut space: Box<Vec<::core::ffi::c_double>> =
-        Box::new(vec![0.; usize::try_from(space_size).unwrap()]);
+    let mut space: Vec<::core::ffi::c_int> = vec![0; usize::try_from(space_size).unwrap()];
     let mut iact = space.as_mut_ptr() as *mut ::core::ffi::c_int;
-    std::mem::forget(space);
 
     if iact.is_null() {
         if iprint >= 1 as ::core::ffi::c_int {
             fprintf(Io::stderr, "cobyla: memory allocation error.");
         }
         //free(w as *mut ::core::ffi::c_void);
-        let _ = Box::from_raw(w);
         return NLOPT_OUT_OF_MEMORY;
     }
     iact = iact.offset(-1);
@@ -1334,8 +1335,7 @@ unsafe fn cobyla(
     w = w.offset(1);
     // free(w as *mut ::core::ffi::c_void);
     // free(iact as *mut ::core::ffi::c_void);
-    let _ = Box::from_raw(w);
-    let _ = Box::from_raw(iact);
+
     return rc;
 }
 unsafe fn cobylb(
