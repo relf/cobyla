@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.3] - 2026-08-24
+
+* Fix memory leak/undefined behavior in `nlopt_cobyla`
+
 ## [1.0.2] - 2026-05-26
 
 * Regenerate nlopt_cobyla.rs code from nlopt 2.10.1 cobyla C code with [c2rust 0.22.1](https://github.com/immunant/c2rust).
