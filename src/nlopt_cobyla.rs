@@ -19,6 +19,7 @@
     clippy::too_many_arguments
 )]
 
+use core::f64;
 use std::convert::TryFrom;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -2563,7 +2564,7 @@ unsafe fn trstlp(
                                     i__ += 1;
                                 }
                                 d__1 = *zdota.offset(kp as isize);
-                                temp = (sp * sp + d__1 * d__1).sqrt();
+                                temp = (sp * sp + d__1 * d__1).sqrt().max(f64::EPSILON);
                                 alpha = *zdota.offset(kp as isize) / temp;
                                 beta = sp / temp;
                                 *zdota.offset(kp as isize) = alpha * *zdota.offset(k as isize);
@@ -2645,7 +2646,7 @@ unsafe fn trstlp(
                                 tot = sp;
                             } else {
                                 kp = k + 1 as ::core::ffi::c_int;
-                                temp = (sp * sp + tot * tot).sqrt();
+                                temp = (sp * sp + tot * tot).sqrt().max(f64::EPSILON);
                                 alpha = sp / temp;
                                 beta = tot / temp;
                                 tot = temp;
@@ -2740,7 +2741,7 @@ unsafe fn trstlp(
                                         i__ += 1;
                                     }
                                     d__1 = *zdota.offset(kp as isize);
-                                    temp = (sp * sp + d__1 * d__1).sqrt();
+                                    temp = (sp * sp + d__1 * d__1).sqrt().max(f64::EPSILON);
                                     alpha = *zdota.offset(kp as isize) / temp;
                                     beta = sp / temp;
                                     *zdota.offset(kp as isize) = alpha * *zdota.offset(k as isize);
@@ -2794,7 +2795,7 @@ unsafe fn trstlp(
                                 i__ += 1;
                             }
                             d__1 = *zdota.offset(nact as isize);
-                            temp = (sp * sp + d__1 * d__1).sqrt();
+                            temp = (sp * sp + d__1 * d__1).sqrt().max(f64::EPSILON);
                             alpha = *zdota.offset(nact as isize) / temp;
                             beta = sp / temp;
                             *zdota.offset(nact as isize) = alpha * *zdota.offset(k as isize);
