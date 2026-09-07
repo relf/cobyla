@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.4] - 2026-09-07
+
+* Fix potential division-by-zero leading to infinite loop
+
 ## [1.0.3] - 2026-08-24
 
 * Fix memory leak/undefined behavior in `nlopt_cobyla`
